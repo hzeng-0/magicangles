@@ -1,8 +1,8 @@
 Directories
 
-* angles/ - store result of previous computations of magic angles for various potentials
+* angles/ - store result of previous computations of magic angles for different potentials
 
-* data/ - store other data/videos
+* results/ - store other data/videos
 
 
 
