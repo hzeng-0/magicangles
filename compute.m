@@ -30,13 +30,7 @@ Dy_2 = Dy(N,k+K,f1,f2);
 
 % Potential
 
-n1 = 0; n2 = 0;
-
-Up = (-4i*pi/3)* (fourier_shift(N,n1-1,n2+1) + w*fourier_shift(N,-n2-1,n1-n2) + w^2*fourier_shift(N,n2-n1, -n1+1));
-% 
-% n1 = 1; n2 = -1;
-% Up = Up + 0.1 * (-4i*pi/3)* (fourier_shift(N,n1-1,n2+1) + w*fourier_shift(N,-n2-1,n1-n2) + w^2*fourier_shift(N,n2-n1, -n1+1));
-% 
+Up = sym_potential(N,0,0);
 Um = Up.';
 
 
@@ -45,16 +39,7 @@ U = [0*Up, Up; Um, 0*Up];
 
 
 
-% Scalar model
-D_scalar = @(k,alpha) 4*Dbar(N,k,f1,f2)^2 - alpha^2*Up*Um;
-D_scalar2 = @(k,alpha) 4*Dbar(N,k+K,f1,f2)*Dbar(N,k-K,f1,f2) - alpha^2*Up*Um;
-
-
-%%
-
-% Singular values %
-
-% Weyl law as lambda change, fixed alpha
+%% Eigenvalues of H: fixed alpha
 
 H = [0*D, (D+5*U)'; (D+5*U), 0*D];
 
@@ -71,25 +56,8 @@ plot(E, (sqrt(3)/(4*pi) * E.^2  - (1:200)' ) ./ E);
 yline(0);
 
 
+%% Eigenvalues of H: varying alpha
 
-%%
-% Varying alpha
-
-alphas = 0:0.1:15;
-
-EE = zeros(length(alphas),40);
-for id=1:length(alphas)
-    disp(alphas(id))
-    EEE = eigs([0*D, (D+alphas(id)*U)'; (D+alphas(id)*U), 0*D], 90, 'smallestabs');
-    EEE=EEE(EEE>0);
-    EE(id,:)=EEE(1:40);
-end
-
-figure(10); hold on;
-plot(alphas,EE);
-xline(5); xline(6);
-
-%%
 alphas = 0:0.1:15;
 
 EE = zeros(length(alphas),40);
@@ -98,80 +66,13 @@ for id=1:length(alphas)
     EE(id,:) = svds(D+alphas(id)*U, 40, 'smallest');
 end
 
-%%
 figure(10); hold on;
 plot(alphas,EE,'Color','b');
 xlabel("\alpha")
 ylabel("Positive eigenvalues of $H_0(\alpha)$",'Interpreter','latex')
-%%xline(5); xline(6);
 
 
-%%
-[V,DD] = eigs([0*D, (D+10*U)'; (D+10*U), 0*D], 60, 'smallestabs');
-% V=V(:,59); % eigenfunction for 2.13 eigenvalue (3.6-19th)
-V = V(:,5);
-V=V(1:length(V)/2);
-
-
-V1 = V(1:length(V)/2); V2 = V(length(V)/2 + 1:end);
-
-[z,v1] = K2X3(V2,K,200,e1,e2);
-
-figure(8); hold on;
-contourf(real(z), imag(z), log(abs(v1)), 10);
-hex(zS);
-axis equal;
-
-%%
-
-
-
-[V,DD] = svds(D_scalar(0,10), 3, 'smallest');
-% [V,DD] = svds(D + 10*U + K*speye(size(D)), 3, 'smallest');
-V = V(:,3);
-% V = V(1:length(V)/2);
-V = V / V(round(length(V) / 2));
-disp(DD);
-
-[z,v1] = K2X3(V,0,400,e1,e2);
-figure; hold on;
-contourf(real(z), imag(z), ((imag(v1))), 10);
-hex(zS);
-axis equal; colorbar;
-
-
-
-
-%%
-
-a = 0:0.01:5;
-s = a;
-
-for id = 1:length(a)
-    disp(id)
-s(id) = svds(D_scalar(0.3,a(id)), 1, 'smallest');
-
-
-end
-
-figure;
-plot(a, s);
-
-%%
-
-s2 = a;
-
-for id = 1:length(a)
-    disp(id)
-s2(id) = svds(D + a(id)*U, 1, 'smallest');
-
-
-end
-
-figure;
-plot(a, s2);
-
-%%
+%% Potential U
 
 inp = @(x,y) (x'*y+x*y')/2;
 U_fun = @(x) exp(i*inp(x,K)) + w*exp(i*inp(x,w*K)) +  w^2*exp(i*inp(x,w^2*K));
@@ -184,16 +85,14 @@ VV = arrayfun(V, xx);
 disp(sum(VV) / length(VV));
 
 
-%%
-
-
-% Magic angles as spectrum of compact operator
+%% Calculate magic angles with T_k
 
 Ak = Inv(2*Db_1) * Up * Inv(2*Db_2) * Um;
 
 Alphas = 1./sqrt(eigs(Ak, 500));
 
-figure(3); hold on;
+figure; 
+hold on;
 scattermult([real(Alphas), imag(Alphas)], 5);
 
 
@@ -206,100 +105,28 @@ fprintf('Gap of real magic angles is about %d\n', RealAlphas(6)-RealAlphas(5));
 
 
 
-%%
+%% Eigenfunctions
 
-% Eigenfunctions
-
-% Protected state
 
 [~,s,V] = svds(D + 20*U + 0*speye(size(D)), 1, 'smallest');
-
 V1 = V(1:length(V)/2); V2 = V(length(V)/2 + 1:end);
-
 [z,v1] = K2X3(V1,K,200,e1,e2);
 
-figure(7); hold on;
+figure; 
+hold on;
 contourf(real(z), imag(z), log(abs((v1))), 30);
 hex(zS);
-axis equal; colorbar; 
+axis equal; 
+colorbar;
 xlim([-0.63,0.63]), ylim([-0.63,0.63]);
 hold off;
 
 
 
-%% D log v 11/13/2024
 
-alpha = 5;
+%% Bracket
 
-[~,s,V] = svds(D + alpha*U + 0*speye(size(D)), 5, 'smallest');
-V = V(:,5);
-
-V = V ./ V(round(length(V)/4));
-
-V1 = V(1:length(V)/2); V2 = V(length(V)/2 + 1:end);
-
-
-
-[z,v1] = K2X3(V1,0,200,e1,e2);
-[z,v2] = K2X3(V2,-K,200,e1,e2);
-
-[z,dxv1] = K2X3(Dx_1*V1 ./alpha,0,200,e1,e2);
-[z,dyv1] = K2X3(Dy_1*V1 ./alpha,0,200,e1,e2);
-
-
-[z,dxv2] = K2X3(Dx_2*V2 ./alpha,-K,200,e1,e2);
-[z,dyv2] = K2X3(Dy_2*V2 ./alpha,-K,200,e1,e2);
-
-levels=linspace(-200,8,50);
-
-% figure(8); hold on;
-% contourf(real(z), imag(z), log(abs(dxv1)), linspace(-5,3,20));
-% hex(zS);
-% axis equal; colorbar;  
-% xlim([-0.63,0.63]), ylim([-0.63,0.63]);
-% hold off;
-
-% figure(8); hold on;
-% contourf(real(z), imag(z), (imag(dyv1 ./ v1)), levels);
-% hex(zS);
-% axis equal; colorbar; 
-% xlim([-0.63,0.63]), ylim([-0.63,0.63]);
-% hold off;
-
-figure(9); hold on;
-surf(real(z),imag(z),angle(v1),'EdgeColor','none');
-colormap(gca,wheelmap)
-hex(zS,10);
-colorbar;
-axis equal;
-xlim([-0.63,0.63]), ylim([-0.63,0.63]);
-clim([-pi pi])
-
-figure(10); hold on;
-surf(real(z),imag(z),angle(dxv1),'EdgeColor','none');
-colormap(gca,wheelmap)
-hex(zS,10);
-colorbar;
-axis equal;
-xlim([-0.63,0.63]), ylim([-0.63,0.63]);
-clim([-pi pi])
-
-figure(11); hold on;
-surf(real(z),imag(z),angle(dyv1),'EdgeColor','none');
-colormap(gca,wheelmap)
-hex(zS,10);
-colorbar;
-axis equal;
-xlim([-0.63,0.63]), ylim([-0.63,0.63]);
-clim([-pi pi])
-
-
-
-%% 
-
-% Bracket
-
-figure(5); hold on;
+figure; hold on;
 
 [boundary,unsure,areas,count,zz,bra]=bracket_area([0 0 1],600,3,4);
 disp([areas, count]);
@@ -313,52 +140,9 @@ scatter3(real(unsure), imag(unsure), 1+ 0*unsure, 4,'red','filled');
 axis equal;
 
 
-% Integrate bracket??
-
-
-disp( sum(bra, 'all') / length(zz) )
-disp( sum(abs(bra), 'all') / length(zz) )
-disp( sum(abs(bra).^2, 'all') / length(zz) )
-disp( sum(sqrt(abs(bra)), 'all') / length(zz) )
-
-
-%%
-
-% Scalar model
-
-inp = @(x,y) (x'*y + x*y')/2;
-U = @(z) exp(i*inp(z,K))+ w*exp(i*inp(z,w*K)) + w^2 * exp(i*inp(z,w^2 * K));
-
-VV = @(z) U(z) * U(-z);
-
-z = 0.5 + 1i*(-0.5/sqrt(3):0.0001:0.5/sqrt(3));
-
-val = sum(arrayfun(@(z) sqrt(VV(z)),z)) / (1/sqrt(3))
-
-
-%%
-
-% FUNCTIONS --------------------------------------------------------------
+%% FUNCTIONS --------------------------------------------------------------
 
 % Derivatives
-
-
-function Dx = Dx(N,k,f1,f2)
-
-    D0 = spdiags((-N:1:N)', 0, 2*N+1, 2*N+1); E = speye(2*N+1, 2*N+1);
-
-    Dx = 0.5 * (kron(D0 * real(f1), E) + kron(E, D0 * real(f2)) + k*kron(E,E));
- 
-end
-
-function Dy = Dy(N,k,f1,f2)
-
-    D0 = spdiags((-N:1:N)', 0, 2*N+1, 2*N+1); E = speye(2*N+1, 2*N+1);
-
-    Dy = 0.5 * (kron(D0 * imag(f1), E) + kron(E, D0 * imag(f2)) + k*kron(E,E));
- 
-end
-
 
 function Dbar = Dbar(N,k,f1,f2)
 
@@ -377,6 +161,12 @@ function A = Inv(B)
 end
 
 % Multiply by potential
+
+
+function U=sym_potential(N,n1,n2) % potential with symmetries for TBG
+
+    U = (-4i*pi/3)* (fourier_shift(N,n1-1,n2+1) + w*fourier_shift(N,-n2-1,n1-n2) + w^2*fourier_shift(N,n2-n1, -n1+1));
+end
 
 function U=fourier_shift(N,n1,n2)
 
@@ -410,7 +200,7 @@ function [z,v] = K2X(V,k,M,e1,e2)
 
 end
 
-% For graphing (makes a copy)
+% For graphing (makes 4 copies)
 
 function [z,v] = K2X3(V,k,M,e1,e2)
 
@@ -430,7 +220,7 @@ end
 
 % (FV)(F1(m1,m2),F2(m1,m2)) = V(m1,m2)  
 
-function F = Perm(N,F1,F2)
+function F = PermK(N,F1,F2)
 
     indx =  @(m1,m2) (2*N+1)*(m1+N) + m2+N + 1;
 
