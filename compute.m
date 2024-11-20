@@ -7,7 +7,7 @@ zS = 1i/sqrt(3);
 e1 = w^2;                     % basis of Lambda
 e2 = -w;
 
-f1 = (4i*pi/sqrt(3))*w;     % dual basis of Lambda^*
+f1 = (4i*pi/sqrt(3))*w;     % dual basis of Lambda^* (<e_i, f_j> = 1_{i==j})
 f2 = (4i*pi/sqrt(3))*w^2;
 
 
@@ -32,51 +32,6 @@ U = [0*Up, Up; Um, 0*Up];
 
 
 
-%% Eigenvalues of H: fixed alpha
-
-H = [0*D, (D+5*U)'; (D+5*U), 0*D];
-
-E = eigs(H, 400, 'smallestabs');
-E = E(E > 0);
-
-
-figure(1); hold on;
-plot(E, (1:200)');
-plot(E, sqrt(3)/(4*pi) * E.^2);
-
-figure(2); hold on;
-plot(E, (sqrt(3)/(4*pi) * E.^2  - (1:200)' ) ./ E);
-yline(0);
-
-
-%% Eigenvalues of H: varying alpha
-
-alphas = 0:0.1:15;
-
-EE = zeros(length(alphas),40);
-for id=1:length(alphas)
-    disp(alphas(id))
-    EE(id,:) = svds(D+alphas(id)*U, 40, 'smallest');
-end
-
-figure(10); hold on;
-plot(alphas,EE,'Color','b');
-xlabel("\alpha")
-ylabel("Positive eigenvalues of $H_0(\alpha)$",'Interpreter','latex')
-
-
-%% Potential U
-
-inp = @(x,y) (x'*y+x*y')/2;
-U_fun = @(x) exp(1i*inp(x,K)) + w*exp(1i*inp(x,w*K)) +  w^2*exp(1i*inp(x,w^2*K));
-
-V_fun = @(x) U_fun(x) * U_fun(-x);
-
-V = @(x) abs(exp(1i*x*K) - exp(-1i*x*K/2));
-xx = 0:0.001:1;
-VV = arrayfun(V, xx);
-disp(sum(VV) / length(VV));
-
 
 %% Calculate magic angles with T_k
 
@@ -93,9 +48,7 @@ scattermult([real(Alphas), imag(Alphas)], 5);
 % Gap of real magic angles
 RealAlphas = Alphas(abs(imag(Alphas)) < 0.01);
 
-fprintf('Gap of real magic angles is about %d\n', RealAlphas(6)-RealAlphas(5));
-
-
+fprintf('Gap of real magic angles ~ %d\n', RealAlphas(6)-RealAlphas(5));
 
 
 %% Eigenfunctions
@@ -111,7 +64,6 @@ minlevel=-16;
 levels=linspace(minlevel,1,28);
 
 
-
 nexttile; hold on;
 contourf(real(z), imag(z), max(log(abs((v1))),minlevel), levels);
 hex(zS); axis equal; colorbar;
@@ -121,6 +73,51 @@ nexttile; hold on;
 contourf(real(z), imag(z), max(log(abs((v2))),minlevel), levels);
 hex(zS); axis equal; colorbar;
 xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+
+
+
+%% Eigenvalues of H: fixed alpha
+
+H = [0*D, (D+5*U)'; (D+5*U), 0*D];
+
+E = svds(D+5*U, 200, 'smallest');
+
+figure; hold on;
+plot(E, (1:200)');
+plot(E, sqrt(3)/(4*pi) * E.^2);
+
+figure; hold on;
+plot(E, (sqrt(3)/(4*pi) * E.^2  - (1:200)' ) ./ E);
+yline(0);
+
+
+%% Eigenvalues of H: varying alpha
+
+alphas = 0:0.1:15;
+
+EE = zeros(length(alphas),40);
+for id=1:length(alphas)
+    disp(alphas(id))
+    EE(id,:) = svds(D+alphas(id)*U, 40, 'smallest');
+end
+
+figure; hold on;
+plot(alphas,EE,'Color','b');
+xlabel("\alpha")
+ylabel("Positive eigenvalues of $H_0(\alpha)$",'Interpreter','latex')
+
+
+%% Potential U
+
+inp = @(x,y) (x'*y+x*y')/2;
+U_fun = @(x) exp(1i*inp(x,K)) + w*exp(1i*inp(x,w*K)) +  w^2*exp(1i*inp(x,w^2*K));
+
+V_fun = @(x) U_fun(x) * U_fun(-x);
+
+V = @(x) abs(exp(1i*x*K) - exp(-1i*x*K/2));
+xx = 0:0.001:1;
+VV = arrayfun(V, xx);
+disp(sum(VV) / length(VV));
 
 
 %% Bracket
@@ -228,18 +225,7 @@ close(vid);
 
 
 %%
-s2= svds(D + alphas(id)*U + K*speye(size(D)), 5, 'smallest');
-R = ROT(N,0);
-%V2 = R * V;
 
-
-%%
-
-[~,s2,V2] = svds(D + alphas(id)*U + 0*speye(size(D)), 5, 'smallest');
-s2
-
-s2 = diag(s2);
-figure; scatter(0*s2, s2, 'x', 'LineWidth', 2);
 
 
 %% FUNCTIONS --------------------------------------------------------------
@@ -400,13 +386,13 @@ end
 function R = REF(N,s1,s2,r1,r2)
 
     if mod(r1+r2,2)==0
-        f1 = @(m1,m2) s1+m1*(-1)^r1;
-        f2 = @(m1,m2) s1+m2*(-1)^r1;
+        fun1 = @(m1,m2) s1+m1*(-1)^r1;
+        fun2 = @(m1,m2) s1+m2*(-1)^r1;
     else
-        f1 = @(m1,m2) s1+m2*(-1)^r1;
-        f2 = @(m1,m2) s2+m1*(-1)^r1;
+        fun1 = @(m1,m2) s1+m2*(-1)^r1;
+        fun2 = @(m1,m2) s2+m1*(-1)^r1;
     end
-    R = PERMK(N,f1,f2);
+    R = PERMK(N,fun1,fun2);
 
 end
 
