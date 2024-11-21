@@ -138,7 +138,7 @@ axis equal;
 
 %% Animation comparing lowest eigenstate at k=K,0, and 3, as \alpha \rightarrow \infty
 
-vid=VideoWriter('.\results\different_k_state_2.mp4','MPEG-4'); open(vid);
+vid=VideoWriter('.\results\different_k_state_x.mp4','MPEG-4'); open(vid);
 fig=figure;
 set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
 
@@ -223,8 +223,120 @@ end
 close(vid);
 
 
+%% Animation for log |u_K| / alpha
 
-%%
+
+vid=VideoWriter('.\results\log_norm_asymptotics_4.mp4','MPEG-4'); open(vid);
+fig=figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+
+alphas = 3:0.1:20;   % inaccurate after 21 due to exponential squeezing of bands
+
+for id=1:length(alphas)
+    clf(fig);
+    tl=tiledlayout(2,2,'TileSpacing','compact');
+    title(tl, ['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex');
+
+    [~,~,V] = svds(D + alphas(id)*U + K*speye(size(D)), 1, 'smallest');
+    [z,v1,~] = K2X4(V,K,300,e1,e2);
+
+
+    nexttile(1, [2 1]);
+    hold on;
+    title('$\alpha^{-1} \log |u_K|$', 'Interpreter', 'latex');
+    minlevel=-1;
+    levels=linspace(minlevel,0.25,40);
+    contourf(real(z), imag(z), max(log(abs(v1)) ./ alphas(id), minlevel), levels);
+    hex(zS); axis equal; colorbar;
+    xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]); 
+
+
+    M = 600;
+    [~,v1,~] = K2X2(V,K,M,e1,e2);
+    
+    nexttile;   
+    hold on;
+    title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex');
+    plot((0:M-1)'./M, log(abs(diag(v1))) ./ alphas(id));
+    xlim([0 1]);
+    ylim([-1 0.2]);
+    xline(1/3); xline(2/3); yline(0, 'Color', 'red');
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+
+    nexttile;
+    hold on;
+    title('restricted to line from $0$ to $\omega$', 'Interpreter', 'latex');
+    plot((M-1:-1:0)'./M, log(abs(v1(1,:))) ./ alphas(id));
+    xlim([0 1]);
+    ylim([-1 1]);
+    xline(1/2); yline(0, 'Color', 'red');
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+
+    drawnow;
+    frame=getframe(fig);
+    writeVideo(vid,frame);
+end
+
+close(vid);
+
+
+%% Animation of u_K restricted to edge of hexagon, and fourier transform
+
+
+vid=VideoWriter('.\results\edge_fourier_asymptotics_3.mp4','MPEG-4'); open(vid);
+fig=figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+
+alphas = 5:0.1:20;
+
+for id=1:length(alphas)
+
+    clf(fig);
+    tl=tiledlayout(1,2,'TileSpacing','compact');
+    title(tl, ['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex');
+
+    [~,~,V] = svds(D + alphas(id)*U + K*speye(size(D)), 1, 'smallest');
+    MM = 600; M = 3*MM;
+    [~,v1,~] = K2X2(V,K,M,e1,e2);
+    v0 = diag(v1); v0 = v0(MM: 2*MM-1);
+    v0 = v0 / norm(v0);
+    v0 = [v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0]; MM = 13*MM;
+
+    % fourier transform
+    V0 = fft(v0);
+    V0 = V0 * sqrt(alphas(id)/13);
+    V0 = circshift(V0, round(MM/2));
+
+    nexttile;   
+    hold on;
+    title('protected state on line from $-\frac{\sqrt{3}i}{3}$ to $-\frac{2\sqrt{3}i}{3}$', 'Interpreter', 'latex');
+    plot((0:(MM/13)-1)' ./(MM/13) .*(2/sqrt(3)), v0(1:MM/13));
+    xlim([0 2/sqrt(3)]);
+    ylim([-3 3]);
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 1 1]; % [width, height, depth]
+
+
+    nexttile;
+    hold on;
+    title('scaled fourier transform', 'Interpreter', 'latex');
+    xlabel('$\xi / \alpha$', 'Interpreter', 'latex');
+    plot(((0:MM-1)' - round(MM/2)) .* (2*pi*sqrt(3)/(13*2*alphas(id))), abs(V0));
+    xlim([-10 10]);
+    ylim([-10 20]);
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 1 1]; % [width, height, depth]
+
+    drawnow;
+    frame=getframe(fig);
+    writeVideo(vid,frame);
+end
+
+close(vid);
 
 
 
@@ -305,7 +417,7 @@ function [z,v1,v2] = K2X2(V,k,M,e1,e2)
     K = 4*pi/3;
 
     [z,v1] = K2X(V(1:length(V)/2),k-K,M,e1,e2);
-    [~,v2] = K2X(V(1+length(V)/2:end),k+K,e1,e2);
+    [~,v2] = K2X(V(1+length(V)/2:end),k+K,M,e1,e2);
 
     phase=v1(1) / abs(v1(1));
     v1=v1 ./ phase; v2=v2./phase;
