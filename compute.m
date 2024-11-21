@@ -32,6 +32,9 @@ U = [0*Up, Up; Um, 0*Up];
 
 
 
+%% Retrieve magic angles
+save_angles=load('.\angles\1_-2_0.0002_circle.mat', 'save_angles').('save_angles');
+
 
 %% Calculate magic angles with T_k
 
@@ -159,7 +162,7 @@ for id=1:length(alphas)
     V1 = V1(:,5); V2 = V2(:,5); V3 = V3(:,1);
     s1 = diag(s1); s2=diag(s2); s3 = diag(s3);
     V10=PROJC(N,V1,0,0);V11=PROJC(N,V1,0,1);V12=PROJC(N,V1,0,2);
-    sizes = '0:' +  string(norm(V10) >0.001) + ', 1:' +  string(norm(V11) >0.001) + ', 2:' +  string(norm(V12) >0.001);
+    sizes = '$0:' +  string(norm(V10) >0.001) + ', 1:' +  string(norm(V11) >0.001) + ', 2:' +  string(norm(V12) >0.001 + '$');
     if norm(V10)> 0.001
         V1 = V10;
     elseif norm(V11) > 0.001
@@ -167,6 +170,7 @@ for id=1:length(alphas)
     else
         V1 = V12;
     end
+    V1 = V1 / norm(V1);
     [z,v11,v12] = K2X4(V1,K,200,e1,e2);
     [~,v21,v22] = K2X4(V2,0,200,e1,e2);
     [~,v31,v32] = K2X4(V3,3,200,e1,e2);
@@ -196,7 +200,7 @@ for id=1:length(alphas)
 
 
     nexttile; hold on;
-    title(sizes);
+    title(sizes, 'Interpreter', 'Latex');
     surf(real(zz),imag(zz),abs(bra),'EdgeColor','none');
     axis equal; xlim([-0.63,0.63]), ylim([-0.63,0.63]); 
     hold off;
@@ -223,15 +227,14 @@ end
 close(vid);
 
 
-%% Animation for log |u_K| / alpha
+%% Animation for log |u_K| / alpha as alpha grows
 
 
 vid=VideoWriter('.\results\log_norm_asymptotics_4.mp4','MPEG-4'); open(vid);
 fig=figure;
 set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
 
-
-alphas = 3:0.1:20;   % inaccurate after 21 due to exponential squeezing of bands
+alphas = 3:0.1:20;
 
 for id=1:length(alphas)
     clf(fig);
@@ -303,7 +306,7 @@ for id=1:length(alphas)
     MM = 600; M = 3*MM;
     [~,v1,~] = K2X2(V,K,M,e1,e2);
     v0 = diag(v1); v0 = v0(MM: 2*MM-1);
-    v0 = v0 / norm(v0);
+    v0 = v0 / norm(v0); v0 = v0 / sign(v0(1));
     v0 = [v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0]; MM = 13*MM;
 
     % fourier transform
@@ -330,6 +333,268 @@ for id=1:length(alphas)
     ylim([-10 20]);
     ax = gca; % Get current axes
     ax.PlotBoxAspectRatio = [1 1 1]; % [width, height, depth]
+
+    drawnow;
+    frame=getframe(fig);
+    writeVideo(vid,frame);
+end
+
+close(vid);
+
+%% Animation for log |u_K| / alpha as potential varies
+
+
+vid=VideoWriter('.\results\log_norm_varying_potential_3.mp4','MPEG-4'); open(vid);
+fig=figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+
+
+Up2 = sym_potential(N,1,-1); Um2 = Up2.';
+U2 = [0*Up, Up2; Um2, 0*Up];
+
+alphas = @(id) 10;
+theta0 = 0:0.002:1;
+theta = theta0 * pi;
+
+for id=1:length(theta)
+    
+    clf(fig);
+    tl=tiledlayout(3,2,'TileSpacing','compact');
+    title(tl, ['$U = \cos\theta f_1 + \sin\theta f_{-2},\,\,\theta = ' sprintf('%.3f', theta0(id)) '\pi$'], 'Interpreter', 'latex');
+    
+    [~,~,V] = svds(D + alphas(id)*(cos(theta(id))*U + sin(theta(id))*U2) + K*speye(size(D)), 1, 'smallest');
+    [z,v1,~] = K2X4(V,K,300,e1,e2);
+    v1_max = max(abs(v1), [], 'all');
+    max_inds = find(abs(abs(v1) - v1_max) < 0.0001);
+    
+    
+    nexttile(1, [3 1]);
+    hold on;
+    title(['$\alpha^{-1} \log |u_K|,\quad\quad \alpha = '  sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex');
+    minlevel=-1;
+    levels=linspace(minlevel,0.25,40);
+    contourf(real(z), imag(z), max(log(abs(v1)) ./ alphas(id), minlevel), levels);
+    hex(zS); axis equal; colorbar;
+    plot(real(z(max_inds)), imag(z(max_inds)), '.', 'color', 'red', 'MarkerSize', 10);
+    xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]);
+
+    
+    M = 600;
+    [~,v1,~] = K2X2(V,K,M,e1,e2);
+    
+    nexttile;   
+    hold on;
+    title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex');
+    plot((0:M-1)'./M, log(abs(diag(v1))) ./ alphas(id));
+    xlim([0 1]);
+    ylim([-1 0.2]);
+    xline(1/3); xline(2/3); yline(0, 'Color', 'red');
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+    
+    nexttile;
+    hold on;
+    title('restricted to line from $0$ to $\omega$', 'Interpreter', 'latex');
+    plot((M-1:-1:0)'./M, log(abs(v1(1,:))) ./ alphas(id));
+    xlim([0 1]);
+    ylim([-1 0.5]);
+    xline(1/2); yline(0, 'Color', 'red');
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+    
+
+
+    nexttile;
+    Alphas = save_angles(:, 1+10*(id-1));
+    
+    hold on;
+    scattermult([real(Alphas), imag(Alphas)], 13);
+    xlim([-0.1 11]); ylim([-8 8]); yline(0);
+
+    drawnow;
+    frame=getframe(fig);
+    writeVideo(vid,frame);
+
+end
+
+close(vid);
+
+%% Bracket and asymptotic (log |u_K|)/alpha ?
+
+% lambda = 1
+
+ V = const_fun(N);
+ V = Up*Um*V;
+
+% V = (w*fourier_shift(N,0,1) + w^2*fourier_shift(N,-1,0)+ ...
+%     fourier_shift(N,-1,-1) + w*fourier_shift(N,0,-1)+ ...
+%     w^2*fourier_shift(N,1,0)+fourier_shift(N,1,1)) * const_fun(N);
+
+dzV = 1i* Dbar(N,0,f1,f2)' * V;
+
+M=600;
+[z,v] = K2X(V,0,M,e1,e2);
+[~,dzv] = K2X(dzV,0,M,e1,e2);
+bracket = imag( sqrt(conj(v)) .* dzv );
+bracket = abs(bracket); 
+bracket = bracket - max(bracket, [], 'all');
+
+
+
+factor = 3000;
+alpha=10;
+
+[~,~,V1] = svds(D + alpha*U + K*speye(size(D)), 1, 'smallest');
+[~,v1,~] = K2X2(V1,K,M,e1,e2);
+
+figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+tl=tiledlayout(2,2,'TileSpacing','compact');
+nexttile;
+hold on;
+title('$\alpha^{-1} \log |u_K|$', 'Interpreter', 'latex');
+minlevel=-1;
+levels=linspace(minlevel,0.25,40);
+contourf(real(z), imag(z), max(log(abs(v1)) ./ alpha, minlevel), levels);
+hex(zS); axis equal; colorbar;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]);
+
+nexttile;
+hold on;
+title('$|\{q, \overline q\}|_{q=0}$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), max(bracket ./ factor, minlevel), levels);
+hex(zS); axis equal; colorbar;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]);
+
+
+nexttile;   
+hold on;
+title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex');
+plot((0:M-1)'./M, log(abs(diag(v1))) ./ alpha);
+plot((0:M-1)'./M, diag(bracket)./factor, 'color', 'green');
+xlim([0 1]);
+ylim([-1.3 0.2]);
+xline(1/3); xline(2/3); yline(0, 'Color', 'red');
+ax = gca; % Get current axes
+ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+
+nexttile;
+hold on;
+title('restricted to line from $0$ to $\omega$', 'Interpreter', 'latex');
+plot((M-1:-1:0)'./M, log(abs(v1(1,:))) ./ alpha);
+plot((M-1:-1:0)'./M, bracket(1,:) ./ factor, 'color', 'green');
+xlim([0 1]);
+ylim([-1.5 0.5]);
+xline(1/2); yline(0, 'Color', 'red');
+ax = gca; % Get current axes
+ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+
+
+
+% doesn't seem right.
+
+%% Plot log bands / alpha    as alpha grows
+
+alphas=3:0.05:20;
+
+E = zeros(20, length(alphas));
+
+for id=1:length(alphas)
+
+    disp(alphas(id))
+
+    E(:,id) = log( svds(D + alphas(id)*U, 20, 'smallest') ) ./ alphas(id);
+
+end
+
+fig=figure; hold on;
+tl=tiledlayout(2,1,'TileSpacing', 'compact');
+title(tl, '$k=0$', 'Interpreter', 'latex');
+
+nexttile; hold on;
+title('$\alpha^{-1}\log E_j$ for $j=1,2,3$', 'Interpreter', 'latex');
+plot(alphas, E(1:3, :));
+xlabel('$\alpha$', 'Interpreter', 'latex');
+ylim([-1, 0.5]); xlim([3, 20]);
+
+nexttile; hold on;
+title('$\alpha^{-1}\log E_j$ for $j=1,\dots, 20$', 'Interpreter', 'latex');
+plot(alphas, E(1:20, :));
+xlabel('$\alpha$', 'Interpreter', 'latex');
+ylim([-1, 0]); xlim([3, 20]);
+
+saveas(fig,'./results/scaled_log_eigenvalues_k0_2.png')
+
+%% Animation overlaying scalar and non-scalar log |u| / alpha  as alpha grows
+
+
+vid=VideoWriter('.\results\log_norm_asymptotics_overlay2_1.mp4','MPEG-4'); open(vid);
+fig=figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+alphas = 10:0.1:20;
+
+for id=1:length(alphas)
+    clf(fig);
+    tl=tiledlayout(2,2,'TileSpacing','compact');
+    title(tl, ['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex');
+
+    [~,~,V] = svds(D + alphas(id)*U + K*speye(size(D)), 1, 'smallest');
+    V  = V(1:length(V)/2); V = V ./norm(V);
+    [z,v1] = K2X3(V,0,300,e1,e2);
+
+    [~,~,V_scalar] = svds((4*Dbar(N,0,f1,f2)^2 -alphas(id)^2 * Up*Um - K^2), 1, 'smallest');
+    [~,v1_scalar] = K2X3(V_scalar,0,300,e1,e2);
+
+
+    nexttile(1);
+    hold on;
+    title('$\alpha^{-1} \log |u_{K,1}|$, where $D(\alpha)u_K = 0$', 'Interpreter', 'latex');
+    minlevel=-1;
+    levels=linspace(minlevel,0.25,40);
+    contourf(real(z), imag(z), max(log(abs(v1)) ./ alphas(id), minlevel), levels);
+    hex(zS); axis equal; colorbar;
+    xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]); 
+
+    nexttile(3);
+    hold on;
+    title('$\alpha^{-1} \log |v_0|$, where $v_0$ is state for smallest singular value of $Q(\alpha,0)-K^2$', 'Interpreter', 'latex');
+    minlevel=-1;
+    levels=linspace(minlevel,0.25,40);
+    contourf(real(z), imag(z), max(log(abs(v1_scalar)) ./ alphas(id), minlevel), levels);
+    hex(zS); axis equal; colorbar;
+    xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]); 
+
+
+    M = 600;
+    [~,v1] = K2X(V,K,M,e1,e2);
+    [~,v1_scalar] = K2X(V_scalar,0,M,e1,e2);
+    
+    nexttile
+    hold on
+    title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex');
+    plot((0:M-1)'./M, log(abs(diag(v1))) ./ alphas(id), 'Color', 'blue');
+    plot((0:M-1)'./M, log(abs(diag(v1_scalar))) ./ alphas(id), 'Color', 'red');
+    xlim([0 1])
+    ylim([-1 0.2])
+    xline(1/3); xline(2/3); yline(0, 'Color', 'black')
+    legend('nonscalar', 'scalar')
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+    
+
+    nexttile
+    hold on
+    title('restricted to line from $0$ to $\omega$', 'Interpreter', 'latex');
+    plot((M-1:-1:0)'./M, log(abs(v1(1,:))) ./ alphas(id), 'Color', 'blue');
+    plot((M-1:-1:0)'./M, log(abs(v1_scalar(1,:))) ./ alphas(id), 'Color', 'red');
+    xlim([0 1])
+    ylim([-1 1])
+    xline(1/2); yline(0, 'Color', 'black');
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
 
     drawnow;
     frame=getframe(fig);
@@ -378,7 +643,7 @@ function U=fourier_shift(N,n1,n2)
 
 end
 
-% Potential with rotation symmetry for TBG
+% Potential with TBG rotation symmetry containing K + n1 f1 + n2 f2
 
 function U=sym_potential(N,n1,n2)
 
@@ -387,6 +652,9 @@ function U=sym_potential(N,n1,n2)
     U = (-4i*pi/3)* (fourier_shift(N,n1-1,n2+1) + w*fourier_shift(N,-n2-1,n1-n2) + w^2*fourier_shift(N,n2-n1, -n1+1));
 end
 
+function V=const_fun(N)
+    V = kron((-N:N).'==0, (-N:N).'==0);
+end
 
 
 
@@ -409,6 +677,7 @@ function [z,v] = K2X(V,k,M,e1,e2)
     z=(e1*y1+e2*y2)/M;
 
     v = v .* exp(0.5i*(k'*z+k*conj(z)));
+    v = v ./ sqrt(sqrt(3)/2); % normalize for fundamental domain size
 
 end
 
@@ -528,4 +797,3 @@ function F = PERMK(N,F1,F2)
     F = sparse(indx(fm1(mask),fm2(mask)), indx(m1(mask),m2(mask)), ones(length(find(mask)),1), (2*N+1)^2, (2*N+1)^2);
 
 end
-
