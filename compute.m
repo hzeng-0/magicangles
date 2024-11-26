@@ -57,7 +57,7 @@ fprintf('Gap of real magic angles ~ %d\n', RealAlphas(6)-RealAlphas(5));
 %% Eigenfunctions
 
 
-[~,s,V] = svds(D + 20*U + K*speye(size(D)), 1, 'smallest');
+[~,s,V] = svds(D + 5*U + K*speye(size(D)), 1, 'smallest');
 [z,v1,v2] = K2X4(V,K,200,e1,e2);
 
 fig=figure;
@@ -72,10 +72,19 @@ contourf(real(z), imag(z), max(log(abs((v1))),minlevel), levels);
 hex(zS); axis equal; colorbar;
 xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
 
+% nexttile; hold on;
+% contourf(real(z), imag(z), max(log(abs((v2))),minlevel), levels);
+% hex(zS); axis equal; colorbar;
+% xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+
 nexttile; hold on;
-contourf(real(z), imag(z), max(log(abs((v2))),minlevel), levels);
-hex(zS); axis equal; colorbar;
+surf(real(z), imag(z), angle(v1), 'EdgeColor', 'none');
+clim([-pi,pi]); colormap(gca,wheelmap);
+hex(zS,10);
+view(2); axis equal;
 xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+colorbar;
+
 
 
 
@@ -443,10 +452,13 @@ bracket = bracket - max(bracket, [], 'all');
 
 
 factor = 3000;
-alpha=10;
+alpha=20;
 
-[~,~,V1] = svds(D + alpha*U + K*speye(size(D)), 1, 'smallest');
-[~,v1,~] = K2X2(V1,K,M,e1,e2);
+% [~,~,V1] = svds(D + alpha*U + K*speye(size(D)), 1, 'smallest');
+% [~,v1,~] = K2X2(V1,K,M,e1,e2);
+
+[~,~,V1] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
+[~,v1] = K2X(V1,K,M,e1,e2);
 
 figure;
 set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
@@ -605,6 +617,127 @@ close(vid);
 
 
 
+%% Alpha changing through complex numbers
+
+vid=VideoWriter('.\results\test0.mp4','MPEG-4'); open(vid);
+fig=figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+
+for id=-1.2:0.02:1.2
+    clf(fig)
+alpha = 5+ 2i*id;
+
+[~,s,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
+[z,v1] = K2X3(V,K,200,e1,e2);
+
+
+
+til=tiledlayout(1,2,'TileSpacing','compact');
+title(til, string(alpha))
+minlevel=-16;
+levels=linspace(minlevel,1,28);
+
+
+nexttile; hold on;
+contourf(real(z), imag(z), max(log(abs((v1))),minlevel), levels);
+hex(zS); axis equal; colorbar;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([-6 1]); hold off;
+
+% nexttile; hold on;
+% contourf(real(z), imag(z), max(log(abs((v2))),minlevel), levels);
+% hex(zS); axis equal; colorbar;
+% xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+
+nexttile; hold on;
+surf(real(z), imag(z), angle(v1), 'EdgeColor', 'none');
+clim([-pi,pi]); colormap(gca,wheelmap);
+hex(zS,10);
+view(2); axis equal;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+colorbar;
+
+% nexttile; hold on;
+% plot(real(alphas), imag(alphas), '.');
+% plot(real(alpha), imag(alpha), 'x'); axis equal;
+% xlim([4 7]), ylim([-1,1]); 
+
+ drawnow;
+    frame=getframe(fig);
+    writeVideo(vid,frame);
+end
+
+close(vid);
+
+%% Finite element for a hexagon dirichlet problem
+
+model = createpde;
+
+rho = exp(1i*pi/3);
+hex_z = zS * rho.^(0:5);
+g = decsg([2 6 real(hex_z) imag(hex_z)]');
+geometryFromEdges(model,g);
+
+applyBoundaryCondition(model,"dirichlet", ...
+                       "Edge",1:model.Geometry.NumEdges, ...
+                       "u",0);
+
+% get f
+V = const_fun(N);
+V = Up*Um*V;
+
+dzV = 1i* Dbar(N,0,f1,f2)' * V;
+
+M=1000;
+[z,v] = K2X(V,0,M,e1,e2);
+[~,dzv] = K2X(dzV,0,M,e1,e2);
+bracket = imag( sqrt(conj(v)) .* dzv );
+f = abs(bracket) ./ abs(v);
+f(1,1) = f(2,1); % lol
+
+% %%
+% figure;hold on;
+% surf(real(z),imag(z),abs(bracket) ./ 1500, 'EdgeColor', 'none')
+% view(2); axis equal; colorbar;
+% 
+% %%
+% figure; hold on;
+% surf(real(z),imag(z),f, 'EdgeColor', 'none')
+% view(2); axis equal; colorbar;
+% 
+% %%
+% interpolate(e1,e2,f,M,0.2165,-0.8669)
+% % interpolate(e1,e2,f,M,0,-0.8)
+% [z,~]=K2X3(V,0,200,e1,e2);
+% fun = @(z) interpolate(e1,e2,f,M,real(z),imag(z));
+% figure; hold on;
+% surf(real(z),imag(z), arrayfun(fun,z), 'EdgeColor', 'none');
+% view(2); axis equal; colorbar;
+
+
+ffun = @(z,etc) interpolate(e1,e2,f,M,z.x,z.y);
+specifyCoefficients(model, "m",0,"d",0,"c",1,"a",0,"f",ffun);
+
+generateMesh(model,"Hmax",0.01);
+result=solvepde(model);
+
+figure; hold on;
+pdeplot(result.Mesh, XYData=result.NodalSolution, Contour="on"); axis equal;
+title("\Phi", 'Interpreter', 'latex')
+saveas(gcf,'./results/Phi_solution.png')
+
+
+%% Misc functions
+
+function fQ=interpolate(e1,e2,f,M,xQ,yQ)
+    T = [real(e1), real(e2); imag(e1), imag(e2)];
+    v = T^(-1) * [xQ; yQ];
+    v = v - floor(v); v = ceil(v*M); v(v==0) = 1;
+    % disp(v)
+    ind = v(1,:) + M*(v(2,:)-1);
+    fQ = f(ind);
+end
+
 %% FUNCTIONS --------------------------------------------------------------
 
 % Below we provide functions related to the space L^2_k(C/(Z e1 + Z e2); C) 
@@ -699,11 +832,11 @@ function [z,v] = K2X3(V,k,M,e1,e2)
 
     [z0,v0]=K2X(V,k,M,e1,e2);
 
-    w = exp(2*pi*1i/3);
     z = [z0-e1-e2, z0-e2; z0-e1, z0];
     
     p2 = exp(-0.5i*(k'*e2+k*e2')); p1 = exp(-0.5i*(k'*e1+k*e1'));
     v = [v0 *p1 *p2, v0 *p2; v0 *p1, v0];
+    v = v ./ (v0(1) / abs(v0(1)));
 
 end
 
@@ -797,3 +930,6 @@ function F = PERMK(N,F1,F2)
     F = sparse(indx(fm1(mask),fm2(mask)), indx(m1(mask),m2(mask)), ones(length(find(mask)),1), (2*N+1)^2, (2*N+1)^2);
 
 end
+
+
+
