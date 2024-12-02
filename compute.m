@@ -56,9 +56,8 @@ fprintf('Gap of real magic angles ~ %d\n', RealAlphas(6)-RealAlphas(5));
 
 %% Eigenfunctions
 
-
-[~,s,V] = svds(D + 5*U + K*speye(size(D)), 1, 'smallest');
-[z,v1,v2] = K2X4(V,K,200,e1,e2);
+[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - (2+6i)^2*Up*Um, 1, 'smallest');
+[z,v1] = K2X3(V,0,200,e1,e2);
 
 fig=figure;
 set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
@@ -84,8 +83,6 @@ hex(zS,10);
 view(2); axis equal;
 xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
 colorbar;
-
-
 
 
 %% Eigenvalues of H: fixed alpha
@@ -121,15 +118,39 @@ ylabel("Positive eigenvalues of $H_0(\alpha)$",'Interpreter','latex')
 
 %% Potential U
 
-inp = @(x,y) (x'*y+x*y')/2;
-U_fun = @(x) exp(1i*inp(x,K)) + w*exp(1i*inp(x,w*K)) +  w^2*exp(1i*inp(x,w^2*K));
+% inp = @(x,y) (x'*y+x*y')/2;
+% U_fun = @(x) exp(1i*inp(x,K)) + w*exp(1i*inp(x,w*K)) +  w^2*exp(1i*inp(x,w^2*K));
+% 
+% V_fun = @(x) U_fun(x) * U_fun(-x);
+% 
+% V = @(x) abs(exp(1i*x*K) - exp(-1i*x*K/2));
+% xx = 0:0.001:1;
+% VV = arrayfun(V, xx);
+% disp(sum(VV) / length(VV));
 
-V_fun = @(x) U_fun(x) * U_fun(-x);
+ V = const_fun(N);
+ V = Up*Um*V;
+[z,v] = K2X3(V,K,300,e1,e2);
 
-V = @(x) abs(exp(1i*x*K) - exp(-1i*x*K/2));
-xx = 0:0.001:1;
-VV = arrayfun(V, xx);
-disp(sum(VV) / length(VV));
+fig=figure;
+set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+til=tiledlayout(1,2,'TileSpacing','compact');
+
+
+nexttile; hold on;
+contourf(real(z), imag(z), abs(v), 32);
+hex(zS); axis equal; colorbar;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]);
+
+
+
+nexttile; hold on;
+surf(real(z), imag(z), angle(v), 'EdgeColor', 'none');
+clim([-pi,pi]); colormap(gca,wheelmap);
+hex(zS,10);
+view(2); axis equal;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+colorbar;
 
 
 %% Bracket
@@ -683,7 +704,7 @@ applyBoundaryCondition(model,"dirichlet", ...
                        "u",0);
 
 % get f
-V = const_fun(N);
+V = sqrt(sqrt(3)/2) * const_fun(N);
 V = Up*Um*V;
 
 dzV = 1i* Dbar(N,0,f1,f2)' * V;
@@ -700,12 +721,12 @@ f(1,1) = f(2,1); % lol
 % surf(real(z),imag(z),abs(bracket) ./ 1500, 'EdgeColor', 'none')
 % view(2); axis equal; colorbar;
 % 
-% %%
-% figure; hold on;
-% surf(real(z),imag(z),f, 'EdgeColor', 'none')
-% view(2); axis equal; colorbar;
+
+figure; hold on;
+contourf(real(z),imag(z),f, 18)
+view(2); axis equal; colorbar;
 % 
-% %%
+
 % interpolate(e1,e2,f,M,0.2165,-0.8669)
 % % interpolate(e1,e2,f,M,0,-0.8)
 % [z,~]=K2X3(V,0,200,e1,e2);
@@ -722,9 +743,228 @@ generateMesh(model,"Hmax",0.01);
 result=solvepde(model);
 
 figure; hold on;
-pdeplot(result.Mesh, XYData=result.NodalSolution, Contour="on"); axis equal;
-title("\Phi", 'Interpreter', 'latex')
-saveas(gcf,'./results/Phi_solution.png')
+pdeplot(result.Mesh, XYData=result.NodalSolution, Contour="on", ColorMap="default", Levels=18); axis equal;
+title("$\Phi$", 'Interpreter', 'latex')
+% saveas(gcf,'./results/Phi_solution.png')
+
+
+%% First 10 eigenfunctions
+
+num=10;
+[~,s,V] = svds(D + 17*U + K*speye(size(D)), num, 'smallest');
+disp([(1:num)', diag(s)])
+
+fig=figure;
+set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+til=tiledlayout(2,5,'TileSpacing','tight');
+
+
+minlevel=-1;
+levels=linspace(minlevel,0.25,40);
+
+
+for id=1:10
+disp(id)
+V2 = V(:,id);
+[U0,U1,U2] = PROJC(N,V2,1);   % at least look symmetric bruh
+disp([id, norm(U0), norm(U1), norm(U2)])
+if norm(U0) > 10^(-5)
+    V2 = U0;
+elseif norm(U1) > 10^(-5)
+    V2 = U1;
+else
+    V2 = U2;
+end
+V2 = V2 ./ norm(V2);
+
+[z,v1,v2] = K2X4(V2,K,200,e1,e2);
+
+
+nexttile; hold on;
+contourf(real(z), imag(z), max(log(abs(v1)) ./ 17,minlevel), levels);
+hex(zS); axis equal; colorbar;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]);
+
+ 
+
+end
+
+%% Log eigenfunction / alpha   smoothened, laplacian
+
+alpha = 20;
+[~,~,V] = svds(D + alpha*U + K*speye(size(D)), 1, 'smallest');
+V = V(1:length(V)/2); V = V / norm(V);
+[z,v] = K2X(V,K,300,e1,e2);
+
+
+rad = 8;
+chi = ones(rad,rad); chi(300,300) = 0; %chi=circshift(chi, [-rad/2, -rad/2]);
+v_conv =  ifft2(fft2(abs(v)) .* fft2(chi)) ./ rad^2;
+v_conv = log(abs(v_conv)) ./ alpha;
+% v_conv = max(log(abs(v)) ./ alpha, -0.5);
+
+V_conv =X2K(v_conv,z,0,N);
+[~,Lap_v_conv]=K2X(Dbar(N,0,f1,f2) * Dbar(N,0,f1,f2)' * V_conv, 0, 300, e1,e2);
+
+
+
+figure;
+til=tiledlayout(1,4,'TileSpacing','compact');
+
+minlevel=-1;
+levels=linspace(minlevel,0.25,40);
+
+nexttile;
+hold on;
+title('$\chi$ where $\int \chi = 1$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), -chi ./ 2, levels);
+axis equal; clim([minlevel 0.25]); 
+
+
+nexttile;
+hold on;
+title('$\alpha^{-1} \log |u_K|$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), max(log(abs(v)) ./ alpha, minlevel), levels);
+clim([minlevel 0.25]); axis equal;
+
+nexttile;
+hold on;
+title('$\alpha^{-1} \log (|u_K| \ast \chi)$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), max(v_conv, minlevel), levels);
+axis equal; clim([minlevel 0.25]); colorbar;
+
+% nexttile;
+% hold on;
+% title('$\Delta(\alpha^{-1} \log (|u_K| \ast \chi))$', 'Interpreter', 'latex');
+% surf(real(z), imag(z), real(Lap_v_conv),'EdgeColor', 'None');
+% axis equal; 
+% view(2);
+% % hex(zS); axis equal; colorbar;
+% ylim([-1.721,0]), xlim([-0.5,0.5]); 
+%  colorbar;
+
+ nexttile;
+hold on;
+title('max$(-3,\Delta(\alpha^{-1} \log (|u_K| \ast \chi)) )$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), min(max(real(Lap_v_conv),-3), 18),15);
+axis equal; 
+view(2);
+% hex(zS); axis equal; colorbar;
+ylim([-1.721,0]), xlim([-0.5,0.5]); 
+ colorbar;
+
+% saveas(gcf,'./results/Laplacian_of_phi_1.png')
+
+%% Conjugate by multiplication with e^(phi/h)
+
+M = 300;
+
+% choice of phi
+
+% {q, bar q}
+
+
+
+% eigenfunction
+
+
+%% Solve laplacian phi = {q, bar q}/|xi|^2
+V = Up * Um * const_fun(N);
+dzV = 1i* Dbar(N,0,f1,f2)' * V;
+M=600;
+[Z,v1] = K2X(V,0,M,e1,e2);
+[~,dzv] = K2X(dzV,0,M,e1,e2);
+bracket = imag( sqrt(conj(v1)) .* dzv );
+bracket = abs(bracket) ./ abs(v1);
+
+% figure;
+% contourf(real(z), imag(z), bracket, 20); axis equal;
+% %%
+
+Bracket = X2K(bracket, z,0,N);
+% bracket = bracket - max(bracket, [], 'all');
+
+Lap = Dbar(N,0,f1,f2) * Dbar(N,0,f1,f2)'; Lap(2*N^2 + 2*N+1,2*N^2 + 2*N+1) = 1;
+
+[z,v] = K2X(Inv(Lap) * Bracket,0, M,e1,e2);
+
+figure;
+contourf(real(z), imag(z), abs(v), 20);
+axis equal;
+
+%% Animation overlaying log |u|/alpha and log |2hDbar u|/alpha   as alpha grows
+
+
+
+vid=VideoWriter('.\results\log_norm_scalar_overlay_1.mp4','MPEG-4'); open(vid);
+fig=figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+alphas = 5:0.1:20;
+
+for id=1:length(alphas)
+    clf(fig);
+    tl=tiledlayout(2,2,'TileSpacing','compact');
+    title(tl, ['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex');
+
+    [~,~,V] = svds((4*Dbar(N,0,f1,f2)^2 -alphas(id)^2 * Up*Um), 1, 'smallest');
+    hdbarV = 2*Dbar(N,0,f1,f2) * V ./ alphas(id);
+    [z,v] = K2X3(V,0,300,e1,e2);
+    [~,dv] = K2X3(hdbarV,0,300,e1,e2);
+
+    nexttile(1);
+    hold on;
+    title('$h\log |u_{0}|$, where $P(\alpha)u_0 = 0$', 'Interpreter', 'latex');
+    minlevel=-1;
+    levels=linspace(minlevel,0.5,40);
+    contourf(real(z), imag(z), max(log(abs(v)) ./ alphas(id), minlevel), levels);
+    hex(zS); axis equal; colorbar;
+    xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]); 
+
+    nexttile(3);
+    hold on;
+    title('$h\log |2hD_{\bar z} u_{0}|$', 'Interpreter', 'latex');
+    minlevel=-1;
+    levels=linspace(minlevel,0.5,40);
+    contourf(real(z), imag(z), max(log(abs(dv)) ./ alphas(id), minlevel), levels);
+    hex(zS); axis equal; colorbar;
+    xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]); 
+
+
+    M = 600;
+    [~,v] = K2X(V,K,M,e1,e2);
+    [~,dv] = K2X(hdbarV,0,M,e1,e2);
+    
+    nexttile
+    hold on
+    title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex');
+    plot((0:M-1)'./M, log(abs(diag(v))) ./ alphas(id), 'Color', 'blue');
+    plot((0:M-1)'./M, log(abs(diag(dv))) ./ alphas(id), 'Color', 'red');
+    xlim([0 1])
+    ylim([-1 0.2])
+    xline(1/3); xline(2/3); yline(0, 'Color', 'black')
+    legend('u', '2hDbar u')
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+    
+
+    nexttile
+    hold on
+    title('restricted to line from $0$ to $\omega$', 'Interpreter', 'latex');
+    plot((M-1:-1:0)'./M, log(abs(v(1,:))) ./ alphas(id), 'Color', 'blue');
+    plot((M-1:-1:0)'./M, log(abs(dv(1,:))) ./ alphas(id), 'Color', 'red');
+    xlim([0 1])
+    ylim([-1 1])
+    xline(1/2); yline(0, 'Color', 'black');
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+
+    drawnow;
+    frame=getframe(fig);
+    writeVideo(vid,frame);
+end
+
+close(vid);
 
 
 %% Misc functions
@@ -776,7 +1016,7 @@ function U=fourier_shift(N,n1,n2)
 
 end
 
-% Potential with TBG rotation symmetry containing K + n1 f1 + n2 f2
+% (2K+) Potential with TBG rotation symmetry containing K + n1 f1 + n2 f2
 
 function U=sym_potential(N,n1,n2)
 
@@ -814,6 +1054,24 @@ function [z,v] = K2X(V,k,M,e1,e2)
 
 end
 
+% Inverse
+
+function V=X2K(v,z,k,N)
+
+    v = v ./ exp(0.5i*(k'*z+k*conj(z)));
+    v = v .* sqrt(sqrt(3)/2);
+    
+    V = ifft2(v);
+    
+    V = circshift(V, [N,N]);
+    V = V(1:2*N+1, 1:2*N+1);
+    V = V.'; V = V(:);
+
+end
+
+
+% Variations
+
 function [z,v1,v2] = K2X2(V,k,M,e1,e2)
 
     K = 4*pi/3;
@@ -826,7 +1084,7 @@ function [z,v1,v2] = K2X2(V,k,M,e1,e2)
 
 end
 
-% Next two functions are for graphing
+% repeat over some copies of fundamental domain
 
 function [z,v] = K2X3(V,k,M,e1,e2)
 
@@ -856,7 +1114,6 @@ end
 
 
 
-
 % Symmetries of TBG
 
 % For k in {0,K,-K}, C[u](x) = u(wx) acts on L^2_k(C;C^2)
@@ -870,12 +1127,14 @@ end
 
 % Project onto eigenspace with Cu = w^r u
 
-function V2 = PROJC(N,V,s,r)
+function [V0,V1,V2] = PROJC(N,V,s)
 
     w = exp(2i*pi/3); R = ROT2(N,s);
 
-    M= (R^0 + w'^r .* R + w^r .* R^2)/3;
-    V2 = M* V;
+    V0= (R^0 + w'^0 .* R + w^0 .* R^2)/3;
+    V1= (R^0 + w'^1 .* R + w^1 .* R^2)/3;
+    V2= (R^0 + w'^2 .* R + w^2 .* R^2)/3;
+    V0 = V0 * V; V1 = V1 * V; V2 = V2 * V;
 
 end
 
