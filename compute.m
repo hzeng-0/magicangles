@@ -15,14 +15,14 @@ zS = 1i/sqrt(3);
 e1 = om^2;                     % basis of Lambda
 e2 = -om;
 
-f1 = (4i*pi/sqrt(3))*om;     % dual basis of Lambda^* (<e_i, f_j> = 1_{i==j})
+f1 = (4i*pi/sqrt(3))*om;     % dual basis of Lambda^* (<e_i, f_j> = 2pi 1_{i==j})
 f2 = (4i*pi/sqrt(3))*om^2;
 
 
 % Now, for example, we can make the Hamiltonian for non-scalar model.
 % (Using the functions at the end of this file.)
 
-N = 32;
+N = 20;
 
 % Dbar
 
@@ -47,10 +47,10 @@ save_angles=load('.\angles\1_-2_0.0002_circle.mat', 'save_angles').('save_angles
 %% Calculate magic angles with T_k
 
 % for non-scalar (original) model
-% Ak = Inv(2*Db_1) * Up * Inv(2*Db_2) * Um;
+Ak = Inv(2*Db_1) * Up * Inv(2*Db_2) * Um;
 
 % for scalar model
-Ak = Inv(4*Dbar(N,K,f1,f2)^2) *  Up * Um;
+% Ak = Inv(4*Dbar(N,K,f1,f2)^2) *  Up * Um;
 
 Alphas = 1./sqrt(eigs(Ak, 500));
 
@@ -119,7 +119,8 @@ ylabel("Positive eigenvalues of $H_0(\alpha)$",'Interpreter','latex')
 %% Graph potential function V
 
 V = Up*Um*const_fun(N);
-[z,v] = K2X3(V,K,300,e1,e2);
+[z,v] = K2X3(V,0,300,e1,e2);
+% v = sqrt(v);
 
 fig=figure;
 set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1])
@@ -593,7 +594,7 @@ axis equal; clim([minlevel 0.25]); colorbar;
 % ylim([-1.721,0]), xlim([-0.5,0.5]); 
 %  colorbar;
 
- nexttile;
+nexttile;
 hold on
 title('max$(-3,\Delta(\alpha^{-1} \log (|u_K| \ast \chi)) )$', 'Interpreter', 'latex');
 contourf(real(z), imag(z), min(max(real(Lap_v_conv),-3), 18),15);
@@ -605,7 +606,7 @@ ylim([-1.721,0]), xlim([-0.5,0.5]);
 
 % saveas(gcf,'./results/Laplacian_of_phi_1.png')
 
-%% (TODO) Conjugate by multiplication with e^(phi/h)
+%% (FIX) Conjugate by multiplication with e^(phi/h)
 
 M = 300;
 figure
@@ -735,13 +736,13 @@ end
 close(vid);
 
 
-%% When u_0 is restricted to edge of hexagon, approximately solve semiclassical ode?
+%% Does restriction of u_0 to edge of hexagon, approximately solve semiclassical ode?
 
 alpha = 20;
 
 [~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2 * Up * Um, 1, 'smallest');
 [~,v] = K2X(V,0,300,e1,e2);
-phase = v(1,1) ./ abs(v(1,1)); 
+phase = exp(1i*angle(v(1,1)));
 V = V ./ phase;
 
 Pot = Up*Um*const_fun(N);
@@ -779,7 +780,6 @@ names = ["u", "dxu", "dyu", "dxxu", "dyyu", "dxyu", "potential V"];
 mm = 20;
 A = A(:,M+1+mm:2*M-mm);
 
-
 % B = normalize(A,2, "norm");
 % ind = [1 2 4];
 % [c,s,~] = svd(B(ind,:), "econ");
@@ -809,29 +809,26 @@ ylim([-100, 100])
 legend(["$(4h^2 \partial_x^2 u) / u$", "$(4h^2 \partial_y^2 u) / u$", "$\Im (4h^2 \partial_x\partial_y u) / u$", "V"], 'Interpreter', 'Latex')
 
 
-
-% 
 % disp( (imag(dyv)' * dxv) / (norm(dxv) * norm(dyv)) )
-% 
-% disp( -norm(dxv) / norm(dyv) ) %c
+% disp( -norm(dxv) / norm(dyv) )
 
 
 
-%% (related to above) calculate c
+%% (related to previous) calculate c (coefficient in ode) for some values of alpha
 
-alphas=5:0.1:20 ;
+alphas=5:0.1:20;
 xx_yy = alphas * 0;
 xx_xy = alphas * 0;
 x_y = alphas * 0;
 
-
 for id=1:length(alphas)
-
 alpha = alphas(id);
+
+
 
 [~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2 * Up * Um, 1, 'smallest');
 [~,v] = K2X(V,0,300,e1,e2);
-phase = v(1,1) ./ abs(v(1,1)); 
+phase = exp(1i*angle(v(1,1)));
 V = V ./ phase;
 
 Pot = Up*Um*const_fun(N);
@@ -857,18 +854,12 @@ v = diag(v); dxv = diag(dxv).* (2 / alpha); dyv = diag(dyv).* (2 / alpha);
 dxxv = diag(dxxv).* (2 / alpha)^2; dyyv = diag(dyyv).* (2 / alpha)^2; 
 dxyv = diag(dxyv).* (2 / alpha)^2; pot = diag(pot);
 
-%1 v      real
-%2 Dxv    real   (Dx = -i dx)
-%3 Dyv    imag
-%4 DxDxv   real
-%5 DyDyv   real
-%6 DxDyv   imag
+
 A = [real(v), real(dxv), imag(dyv), real(dxxv), real(dyyv), imag(dxyv), pot].';
 names = ["u", "dxu", "dyu", "dxxu", "dyyu", "dxyu", "potential V"];
 
 mm = 20;
 A = A(:,M+1+mm:2*M-mm);
-% B = normalize(A,2, "norm");
 
 
 
@@ -884,13 +875,6 @@ ind = [4 6];
 [c,s,~] = svd(A(ind,:), "econ");
 xx_xy(id) = c(3)/c(4);
 
-
-% disp(names(ind))
-% disp("singular values")
-% disp(s)
-% disp("coefficients")
-% disp(c)
-
 end
 
 figure
@@ -898,9 +882,11 @@ hold on
 plot(alphas, xx_yy)
 plot(alphas, xx_xy)
 plot(alphas, x_y)
-legend(["$\sqrt{\partial_{yy} u / \partial_{xx} u}$", "$(Im \partial_{xy} u) / \partial_{xx} u$", "$\partial_y u / Im(\partial_x u)$"], 'Interpreter', 'Latex')
+legend(["$\sqrt{\partial_{yy} u / \partial_{xx} u}$",...
+        "$(Im \partial_{xy} u) / \partial_{xx} u$", "$\partial_y u / Im(\partial_x u)$"],...
+       'Interpreter', 'Latex')
 
-%% Animation of changing potential and corresponding protected state
+%% Animation of potential changing (between f_1 and f_-2) and corresponding protected state
 
 vid=VideoWriter('.\results\varying_potential_2_1.mp4','MPEG-4'); open(vid);
 fig=figure;
@@ -923,7 +909,8 @@ for id=1:length(theta)
     [~,v] = K2X3( V * const_fun(N), 0, 300, e1,e2 );
     v = v ./ exp(1i*angle(v(150,150)));
 
-    title(tl, ['$V(z) = U(z)U(-z), U(z) = \cos^2(\theta)f_1 - \sin^2(\theta) f_{-2}, \theta = ' sprintf('%.2f', id / length(theta)) '\pi$'], 'Interpreter', "latex");
+    title(tl, ['$V(z) = U(z)U(-z), U(z) = \cos^2(\theta)f_1 - \sin^2(\theta) f_{-2}, \theta = '...
+               sprintf('%.2f', id / length(theta)) '\pi$'], 'Interpreter', "latex");
 
     nexttile    % plot highest points? nah for now, just wanna see
     hold on
@@ -973,27 +960,29 @@ end
 close(vid);
 
 
-%% Comparison with Airy function (in w coordinates)
-
+%% Comparison with Airy function in w coordinates
 
 % prologue -------------
 
-vid=VideoWriter('.\results\airy_holo_0.mp4','MPEG-4'); open(vid);
+
+vid=VideoWriter('.\results\airy_holo_6.mp4','MPEG-4'); open(vid);
 fig=figure;
-set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
 
 
-alphas = 10:0.1:20;
+alphas = 0.1:0.1:19.5;
+
 for id=1:length(alphas)
 alpha = alphas(id);
-
-clf(fig);
-tl=tiledlayout(2,3,'TileSpacing','compact');
-title(tl, ['$\alpha = ' sprintf('%.1f', alpha) '$'], 'Interpreter', 'latex')
+% alpha = 17;
 
 % ----------------------
+disp(id)
+clf(fig);
+tl=tiledlayout(2,3,'TileSpacing','compact');
+title(tl, ['$\alpha = ' sprintf('%.1f', real(alpha / 1i)) 'i$'], 'Interpreter', 'latex')
 
-A = -1i*(8 * pi^3 * alpha^2 / 3)^(-1/3);
+A = -1i*(8 * pi^3 * (alpha)^2 / 3)^(-1/3);
 
 % Range of w
 [x,y] = meshgrid(-1:0.005:1, -1:0.005:1);
@@ -1001,27 +990,36 @@ w = x + 1i*y; w= 5*w;
 z = zS + A * w;
 
 % Get protected state
-M=2000;
-[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
+M=4000;
+[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - (alpha)^2*Up*Um, 1, 'smallest');
 [~,v] = K2X(V,0,M,e1,e2);
-[~,dv] = K2X(1i*Dbar(N,0,f1,f2)*V, 0,M,e1,e2);
-phase = v(1,1) / norm(v(1,1));
-dv = dv ./ phase;v = v ./ phase; 
 
 
 apply = @(f) arrayfun(@(z) interpolate(e1,e2,f,M,real(z),imag(z)), z);
+phase = exp(1i*angle(interpolate(e1,e2,v,M,real(zS), imag(zS) ) ) );
+
+
 v = apply(v);
+
+
+[~,dv] = K2X(1i*Dbar(N,0,f1,f2)*V, 0,M,e1,e2);
 dv = apply(A*dv);
+
+dv = dv ./ phase;v = v ./ phase; 
+
 
 
 % Airy function and derivatives
-cw = conj(w);
-ai0 = airy(cw);
-ai1 = airy(om * cw);
-ai2 = airy(om^2 * cw);
-dai0 = airy(1,cw);
-dai1 = airy(1,om * cw);
-dai2 = airy(1,om^2 * cw);
+c = (2/3)*(16/3)^(1/3);
+% c=0;
+ww = conj(w) - c * alpha^(-2/3) * w.^2;
+%ww = conj(w);
+ai0 = airy(ww);
+ai1 = airy(om * ww);
+ai2 = airy(om^2 * ww);
+dai0 = airy(1,ww);
+dai1 = airy(1,om * ww);
+dai2 = airy(1,om^2 * ww);
 
 F0 = ai0 + ai1 + ai2;
 dF0 = dai0 + om*dai1 + om^2 * dai2;
@@ -1029,20 +1027,25 @@ F2 = ai0 + om^2 * ai1 + om*ai2;
 dF2 = dai0 + dai1 + dai2;
 
 % Compute wronskians
-wronsF = F0 .* dF2 - F2 .* dF0; % 0.8270
+% wronsF = F0 .* dF2 - F2 .* dF0; % 0.8270
+wronsF = F0 * 0 -3*sqrt(3)/(2*pi);
 wrons0 = v .* dF0 - F0 .* dv;
 wrons2 = v .* dF2 - F2 .* dv;
 
+g0 = wrons2 ./ wronsF;
+g2 = - wrons0 ./ (w .* wronsF);
+
 % % compare
-% v2 = (wrons2 .* F0 - wrons0 .* F2) ./ wronsF;
-% disp( max(abs(v), [], 'all') )
-% disp( max(abs(v-v2), [], 'all') )
+v2 = (wrons2 .* F0 - wrons0 .* F2) ./ wronsF;
+disp( max(abs(v), [], 'all') )
+disp( max(abs(v-v2), [], 'all') )
 
 %
 nexttile(1)
 hold on
-title("$h\log |u_1(w)|$", 'Interpreter', 'latex')
-contourf(real(w), imag(w), max(log(abs(v)) ./ alpha, -1.2), linspace(-1.2, 0.2, 30))
+title("$|\alpha|^{-1}\log |u_1(w)|$", 'Interpreter', 'latex')
+contourf(real(w), imag(w), max(log(abs(v)) ./ abs(alpha), -1.2), linspace(-1.2, 0.2, 50))
+contourf(real(w), imag(w), abs(v), 32)
 axis equal
 clim([-1.2, 0])
 colorbar
@@ -1059,16 +1062,16 @@ colorbar
 
 nexttile(2)
 hold on
-title("$h\log |Wron(u_1, F0)(w)|$", 'Interpreter', 'latex')
-contourf(real(w), imag(w), min(max(log(abs(wrons0)) ./ alpha, -1.2), 1),  linspace(-1.2, 1, 30))
+title("$|\alpha|^{-1}\log |g_0(w^3)|$", 'Interpreter', 'latex')
+contourf(real(w), imag(w), min(max(log(abs(g0)) ./ abs(alpha), -1.2), 1),  linspace(-1.2, 1, 50))
 axis equal
 clim([-1.2 1])
 colorbar
 
 nexttile(5)
 hold on
-title("$angle(Wron(u_1, F0))$", 'Interpreter', 'latex')
-surf(real(w), imag(w), angle(wrons0), 'EdgeColor', 'none');
+title("$angle(g_0(w^3))$", 'Interpreter', 'latex')
+surf(real(w), imag(w), angle(g0), 'EdgeColor', 'none');
 clim([-pi,pi]); colormap(gca,wheelmap);
 view(2)
 axis equal
@@ -1077,16 +1080,16 @@ colorbar
 
 nexttile(3)
 hold on
-title("$h\log |Wron(u_1, F2)(w)|$", 'Interpreter', 'latex')
-contourf(real(w), imag(w), min(max(log(abs(wrons2)) ./ alpha, -1.2), 1),  linspace(-1.2, 1, 30))
+title("$|\alpha|^{-1}\log |g_2(w^3)|$", 'Interpreter', 'latex')
+contourf(real(w), imag(w), min(max(log(abs(g2)) ./ abs(alpha), -1.2), 1),  linspace(-1.2, 1, 50))
 axis equal
 clim([-1.2 1])
 colorbar
 
 nexttile(6)
 hold on
-title("$angle(Wron(u_1, F2))$", 'Interpreter', 'latex')
-surf(real(w), imag(w), angle(wrons2), 'EdgeColor', 'none');
+title("$angle(g_2(w^3))$", 'Interpreter', 'latex')
+surf(real(w), imag(w), angle(g2), 'EdgeColor', 'none');
 clim([-pi,pi]); colormap(gca,wheelmap);
 view(2)
 axis equal
@@ -1103,110 +1106,376 @@ close(vid)
 
 % ----------------------
 
-%% Animation for log |airy_ansatz| / alpha as alpha grows  (zworski's code)
+
+%% for some set of alpha, compute g_0(0) and g_0(2) from wronskian with Airy function
 
 
-zS = 1i/sqrt(3);
+% prologue -------------
 
-
-x = linspace(-0.5/sqrt(3),0.5/sqrt(3),300);
-
-
-y = x;
-
-
-[x,y]=meshgrid(x,y);
-
-
-z = zS + x + 1i*y;
-   
-xmin = min(min(real(z)));
-xmax = max(max(real(z)));
-ymin = min(min(imag(z)));
-ymax = max(max(imag(z)));
-
-
-
-
-vid=VideoWriter('.\airy_movie.mp4','MPEG-4'); open(vid);
-fig=figure;
-set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
-
-
-alphas = 7:0.025:14;
-
+% [xx,yy] = meshgrid(0.1:0.15:15, 0.1:0.15:13);
+% [xx,yy] = meshgrid(0.1:0.2:5, 0.1:0.5:5);
+% alphas = xx + 1i * yy; alphas = alphas(:);
+alphas = 5:0.03:18;
+g00=0*alphas; g20 = 0*alphas;
 
 for id=1:length(alphas)
-    clf(fig);
-    title(['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex');
-    minlevel=-1;
-    levels=linspace(minlevel,0.25,40);
+alpha = alphas(id);
+disp(alpha)
+disp(id)
+
+% ----------------------
+
+A = -1i*(8 * pi^3 * alpha^2 / 3)^(-1/3);
+
+% Range of w
+[x,y] = meshgrid(-1:0.005:1, -1:0.005:1);
+w = x + 1i*y; w= 5*w;
+z = zS + A * w;
+
+% Get protected state
+M=400;
+[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
+[~,v] = K2X(V,0,M,e1,e2);
+[~,dv] = K2X(1i*Dbar(N,0,f1,f2)*V, 0,M,e1,e2);
+phase = exp(1i*angle(v(1,1)));
+dv = dv ./ phase;v = v ./ phase;
 
 
-v1 = airy_ansatz(z,alphas(id));
+apply = @(f) arrayfun(@(z) interpolate(e1,e2,f,M,real(z),imag(z)), z);
+v = apply(v);
+dv = apply(A*dv);
 
 
-    contourf(real(z), imag(z), max(log(abs(v1)) ./ alphas(id), minlevel), levels)
+% Airy function and derivatives
+% c = 2^(2/3)*(pi/3)/(32*pi^3/3)^(1/3);
+c = (2/3)*(16/3)^(1/3);
+ww = conj(w) - c * alpha^(-2/3) * w.^2;
+
+ai0 = airy(ww);
+ai1 = airy(om * ww);
+ai2 = airy(om^2 * ww);
+dai0 = airy(1,ww);
+dai1 = airy(1,om * ww);
+dai2 = airy(1,om^2 * ww);
+
+F0 = ai0 + ai1 + ai2;
+dF0 = dai0 + om*dai1 + om^2 * dai2;
+F2 = ai0 + om^2 * ai1 + om*ai2;
+dF2 = dai0 + dai1 + dai2;
+
+% Compute wronskians
+wronsF = F0 * 0 -3*sqrt(3)/(2*pi);
+wrons0 = v .* dF0 - F0 .* dv;
+wrons2 = v .* dF2 - F2 .* dv;
+
+g0 = wrons2 ./ wronsF;
+g2 = - wrons0 ./ (w .* wronsF);
+
+% % compare
+% v2 = (wrons2 .* F0 - wrons0 .* F2) ./ wronsF;
+% disp( max(abs(v), [], 'all') )
+% disp( max(abs(v-v2), [], 'all') )
+
+
+g00(id) = g0(201,201); g20(id) = g2(200,200);
+
+% epilogue -------------
+
+% toc
+end
+% save("./results/2d_g00.mat", "g00","g20", "alphas") % 4 alpha in 2d grid
+% ----------------------
+
+% for alpha on real line, graph (g_0(0), g_2(0)) as a point in R^2
+
+% vid=VideoWriter('.\results\g00_g20_circle_2.mp4','MPEG-4'); open(vid);
+% fig=figure;
+% set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+% 
+% 
+% for id=2:length(alphas)
+%     clf(fig)
+%     hold on
+%     title(['$(g_0(0), g_2(0))$, for $\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex')
+% 
+% plot(real(g00), real(g20))
+% xline(0); yline(0);
+% plot(real(g00(id)), real(g20(id)), 'o', 'Color', 'red')
+% axis equal
+% 
+%  drawnow;
+%     frame=getframe(fig);
+%     writeVideo(vid,frame);
+% end
+% 
+% close(vid);
+
+% --
+
+% for alpha on real line, plot log(abs(g_0(0))), log(abs(g_2(0)))
+
+% plot(alphas, log(g00))
+% plot(alphas, log(g20))
+% 
+% Ak = Inv(4*Dbar(N,K,f1,f2)^2) *  Up * Um;
+% Alphas = 1./sqrt(eigs(Ak, 500));
+% Alphas = Alphas(abs(imag(Alphas)) < 0.001 & 0 < real(Alphas) & real(Alphas) < 22);
+% for id=1:length(Alphas)
+%     xline(real(Alphas(id)));
+% end
+% 
+% legend(["$\log(g_0(0))$", "$\log(g_2(0))$", "magic $\alpha$"], 'Interpreter', 'Latex')
+% saveas(fig,'./results/g_00_2.png')
+
+% --
+
+
+% for alpha in 2d grid
+
+% load("./results/2d_g00.mat", "g00","g20", "alphas")
+% alphas=reshape(alphas, [87 100]);
+% g00=reshape(g00, [87 100]);
+% g20=reshape(g20, [87 100]);
+% 
+% figure
+% tl=tiledlayout(1,2,'TileSpacing','compact');
+% title(tl, '$|g_0(0)|$ and $|g_2(0)|$ as functions of $\alpha$', 'Interpreter', 'latex')
+% 
+% nexttile
+% hold on
+% title('$|g_0(0)|$', 'Interpreter', 'Latex')
+% contourf(real(alphas), imag(alphas), log(abs(g00)), 30)
+% colorbar
+% axis equal
+% 
+% nexttile
+% hold on
+% title('$|g_2(0)|$', 'Interpreter', 'Latex')
+% contourf(real(alphas), imag(alphas), log(abs(g20)), 30)
+% colorbar
+% axis equal 
+
+% %saveas(gcf,'./results/g_00_plane_1.png')
+
+
+
+%% Logarithmic derivative of protected state u
+
+% V(x)
+
+alpha = 10;
+[~,~,V] = svds(D + alpha*U + K*speye(size(D)), 1, 'smallest');
+V = V(1:length(V)/2); V = V / norm(V);
+[z,v] = K2X(V,K,300,e1,e2);
+
+
+rad = 20;
+chi = ones(rad,rad); chi(300,300) = 0; %chi=circshift(chi, [-rad/2, -rad/2]);
+v_conv =  ifft2(fft2(abs(v)) .* fft2(chi)) ./ rad^2;
+v_conv = v_conv .* exp(1i*angle(v));
+
+V_conv =X2K(v_conv,z,0,N);
+[~,Dbar_v_conv]=K2X(Dbar(N,0,f1,f2) * V_conv, 0, 300, e1,e2);
+
+vv = (Dbar_v_conv ./ v_conv) .^ 2;
+
+figure
+til=tiledlayout(1,4,'TileSpacing','compact');
+
+
+% nexttile;
+% hold on
+% title('$\chi$ where $\int \chi = 1$', 'Interpreter', 'latex');
+% contourf(real(z), imag(z), -chi ./ 2, levels);
+% axis equal; clim([minlevel 0.25]); 
+
+
+nexttile;
+hold on
+contourf(real(z), imag(z), max(min(real(vv), 40000), -40000), 32);
+axis equal
+colorbar
+
+nexttile;
+hold on
+contourf(real(z), imag(z), max(log(abs(v)), -20), 32);
 axis equal; colorbar;
-    xlim([xmin,xmax]), ylim([ymin,ymax]); clim([minlevel 0.25]); 
+
+%% Phase function branch cut WKB (from AM's Phys Rev Letter paper on WKB)
+
+M = 300;
+
+V = Up*Um*const_fun(N);
+
+[z,v] = K2X(V,0,M,e1,e2);
+v = sqrt(-v);
 
 
-    drawnow;
-    frame=getframe(fig);
-    writeVideo(vid,frame);
+
+V2 = X2K(v,z,0,N);
+
+Db = Dbar(N,0,f1,f2);
+ww = spdiags([ 0*(1:N) 1 0*(1:N)]', 0, 2*N+1, 2*N+1);
+Db = Db + kron(ww, ww);
+
+V2 = Inv(Db) * V2;
+
+val = V2((N)*(2*N+1) + N+1) *sqrt(sqrt(3)/2);
+V2((N)*(2*N+1) + N+1) = 0;
+
+[z,v] = K2X(V2,0,M,e1,e2);
+% [~,v1] = K2X3(ROT(N,0)*V2,0,M,e1,e2);
+% [~,v2] = K2X3(ROT(N,0)^2*V2,0,M,e1,e2);
+
+
+V = Up*Um*const_fun(N);
+[~,v0] = K2X(V,0,M,e1,e2);
+v0 = v0 .^ (-0.25);
+v0(imag(z) > 0) = -1i*v0(imag(z)>0);
+
+v = v + 0.5 * (val*z'+val'*z); % (no diff? lol)
+
+
+% vid=VideoWriter('.\results\physics_wkb_3.mp4','MPEG-4'); open(vid);
+% fig=figure;
+% set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+% 
+% for alpha=0:0.1:10
+
+    % clf(fig);
+    tl=tiledlayout(1,2,'TileSpacing','compact');
+    % title(tl, ['$\alpha = ' sprintf('%.1f', alpha) '$'], 'Interpreter', 'latex');
+
+
+% vv = (exp(1i*v*alpha)  + exp(-1i*v*alpha)) .* v0;
+
+nexttile
+hold on
+title("real part")
+contourf(real(z), imag(z), real(v), 30)
+axis equal; colorbar
+% xlim([-0.63,0.63]), ylim([-0.63,0.63])
+
+nexttile
+hold on
+title("imaginary part")
+contourf(real(z), imag(z), imag(v), 30)
+axis equal; colorbar
+% xlim([-0.63,0.63]), ylim([-0.63,0.63])
+
+% nexttile
+% surf(real(z), imag(z), angle(vv), 'EdgeColor', 'none');
+% clim([-pi,pi]); colormap(gca,wheelmap);view(2);
+% hex(zS,10); axis equal; colorbar
+% xlim([-0.63,0.63]), ylim([-0.63,0.63])
+% 
+% nexttile
+% hold on
+% contourf(real(z), imag(z), max(log(abs(vv)) ./ alpha, -1), -1:0.05:2)
+% hex(zS); axis equal; colorbar
+% xlim([-0.63,0.63]), ylim([-0.63,0.63])
+
+
+%     drawnow;
+%     frame=getframe(fig);
+%     writeVideo(vid,frame);
+% end
+% 
+% close(vid);
+
+
+%% Log of protected state 2x2 matrix (non-scalar)
+
+alpha = 17.6;
+[~,s1,V1] = svds(D + K*speye(size(D)) + alpha*U, 1, 'smallest');
+[~,s2,V2] = svds(D - K*speye(size(D)) + alpha*U, 1, 'smallest');
+
+M = 600;
+[z,v11,v12] = K2X2(V1,K,M,e1,e2);
+[~,v21,v22] = K2X2(V2,-K,M,e1,e2);
+
+
+% figure
+% hold on
+% title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex')
+% plot((0:M-1)'./M, log(abs(diag(v11))) ./ alpha, 'color', 'black')
+% plot((0:M-1)'./M, log(abs(diag(v12))) ./ alpha, 'color', 'red')
+% plot((0:M-1)'./M, log(abs(diag(v21))) ./ alpha, 'color', 'blue')
+% plot((0:M-1)'./M, log(abs(diag(v22))) ./ alpha, 'color', 'green')
+
+% xlim([0 1]), ylim([-1 0.2])
+% xline(1/3), xline(2/3), yline(0, 'Color', 'red')
+% ax = gca; % Get current axes
+% ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+
+e = 0*z; a = 0*z; b = 0*z; c = 0*z; E1 = 0*z; E2 = 0*z;
+for ii=1:size(z,1)
+    for jj=1:size(z,2)
+        v = logm([v11(ii,jj), v21(ii,jj); v12(ii,jj), v22(ii,jj)]) / alpha;
+        e(ii,jj) = v(1,1) + v(2,2);
+        a(ii,jj) = v(1,1) - v(2,2);
+        b(ii,jj) = v(2,1) + v(1,2);
+        c(ii,jj) = v(2,1) - v(1,2);
+
+        EE = eigs([v11(ii,jj), v21(ii,jj); v12(ii,jj), v22(ii,jj)]);
+        E1(ii,jj) = EE(1); E2(ii,jj) = EE(2);
+    end
 end
 
+%
 
-close(vid);
+figure
+hold on
+contourf(real(z), imag(z), max(real(log(E1)), -20), 30);
+hex(zS); axis equal; colorbar
+xlim([-0.63,0.63]), ylim([-0.63,0.63])
 
+%% For non-symmetric potential, magic angles changing for k in a loop
 
+Up = sym_potential(N,0,0) + 0.001*fourier_shift(N,0,0);
+Um = Up.';
+%for f_{-2}, use   Up2 = sym_potential(N,1,-1); Um2 = Up2.';
 
-%% Airy and eigenfunction comparison
-
-
-vid=VideoWriter('.\airy_comparison_1.mp4','MPEG-4'); open(vid);
-fig=figure;
-set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
-
-
-alphas = 7:0.025:14;
-
-xmin=-0.5/sqrt(3) + real(zS);
-xmax= 0.5/sqrt(3) + real(zS);
-ymin=-0.5/sqrt(3) + imag(zS);
-ymax= 0.5/sqrt(3) + imag(zS);
-
-for id=1:length(alphas)
-    clf(fig);
-    tl=tiledlayout(1,2);
-    title(tl, ['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex');
-    minlevel=-1;
-    levels=linspace(minlevel,0.25,40);
-
-[~,~,V1] = svds(4*Dbar(N,0,f1,f2)^2 - alphas(id)^2 * Up * Um, 1, "smallest");
-
-[z,v1] = K2X3(V1, 0, 500, e1, e2);
-v2 = airy_ansatz(z,alphas(id));
-
-    nexttile
-    contourf(real(z), imag(z), max(log(abs(v1)) ./ alphas(id), minlevel), levels)
-axis equal; colorbar;
-    xlim([xmin,xmax]), ylim([ymin,ymax]); clim([minlevel 0.25]); 
+Dk = @(k) D + k*speye(size(D));
+U = [0*Up, Up; Um, 0*Up];
 
 
+ks = [-0.12:0.000701:0.12, 0.15];
+% ks = exp(1i*2*pi*(0:0.01:1));
+ks = 0.1*ks - K;
+colors = spring(length(ks));
 
-    nexttile
-    contourf(real(z), imag(z), max(log(abs(v2)) ./ alphas(id), minlevel), levels)
-axis equal; colorbar;
-    xlim([xmin,xmax]), ylim([ymin,ymax]); clim([minlevel 0.25]); 
+figure
+hold on
 
-    drawnow;
-    frame=getframe(fig);
-    writeVideo(vid,frame);
+for id=1:length(ks)
+    k=ks(id);
+    Alphas = 1./(eigs(Inv(Dk(ks(id)))*U, 200));
+    plot(real(Alphas), imag(Alphas), '.', 'color', colors(id,:))
+    drawnow
+    disp(id)
 end
 
+Alphas = 1./(eigs(Inv(Dk(0))*U, 200));
+plot(real(Alphas), imag(Alphas), 'x', 'Color', 'black')
 
-close(vid);
+
+%% D(alpha) representation using position space basis
+
+
+V = Up .* Um * const_fun(N);
+M=50;
+[z,VV] = K2X(V, 0, M, e1, e2); VV = VV(:);
+alpha = 10;
+P = 4*FE_Dbar(M, f1, f2)^2 - alpha^2 * Mult(VV, M);
+[~,s,v] = svds(P, 10, 'smallest');
+
+figure
+hold on
+contourf(real(z), imag(z), abs(reshape(v(:,10), [M M])), 32);
+colorbar
+axis equal
+
 
 
 %% FUNCTIONS -----------------------------------------------------
@@ -1221,6 +1490,7 @@ close(vid);
 
 % About fourier basis: a vector is a length (2N+1)^2 column vector, represent 
 % v(z) = \sum_{a,b\in{-N,...,N}} V((2N+1)*(a+N)+b+N+1) e^{i<z, a f1 + b f2>}
+% Note V((2N+1)*(a+N)+b+N+1) = "(reshape(V, [2N+1, 2N+1]) (N+1 + b,  N+1 + a)  ".
 
 
 % Derivatives --------------
@@ -1308,30 +1578,35 @@ function [z,v1,v2] = K2X2(V,k,M,e1,e2)
     [z,v1] = K2X(V(1:length(V)/2),k-K,M,e1,e2);
     [~,v2] = K2X(V(1+length(V)/2:end),k+K,M,e1,e2);
 
-    phase=v1(1) / abs(v1(1));
+    phase=exp(1i * angle(v1(1)) );
     v1=v1 ./ phase; v2=v2./phase;
 end
 
 % Same as K2X, K2X2 but repeat over some copies of fundamental domain
 
-function [z,v] = K2X3(V,k,M,e1,e2)
+function [z,v] = K2X3(V,k,M,e1,e2,nophase)
     [z0,v0]=K2X(V,k,M,e1,e2);
 
     z = [z0-e1-e2, z0-e2; z0-e1, z0];
     
     p2 = exp(-0.5i*(k'*e2+k*e2')); p1 = exp(-0.5i*(k'*e1+k*e1'));
     v = [v0 *p1 *p2, v0 *p2; v0 *p1, v0];
-    v = v ./ (v0(1) / abs(v0(1)));
+    if ~exist('nophase', 'var')
+        phase = exp(1i * angle(v0(1)));
+        v = v ./  phase;
+    end
 end
 
-function [z,v1,v2] = K2X4(V,k,M,e1,e2)
+function [z,v1,v2] = K2X4(V,k,M,e1,e2,nophase)
     K = 4*pi/3;
 
     [z,v1] = K2X3(V(1:length(V)/2),k-K,M,e1,e2);
     [~,v2] = K2X3(V(1+length(V)/2:end),k+K,M,e1,e2);
 
-    phase=v1(length(v1)/2) / abs(v1(length(v1)/2));
-    v1=v1 ./ phase; v2=v2./phase;
+    if ~exist('nophase', 'var')
+        phase=exp(1i*angle(v1(length(v1)/2)));
+        v1=v1 ./ phase; v2=v2./phase;
+    end
 end
 
 
@@ -1400,39 +1675,30 @@ function F = PERMK(N,F1,F2)
 end
 
 
+% Some position space operators --------------
+
+% Next two functions are position space (finite element) representations
+% of Dbar and V.
+% They should be equivalent to the fourier basis representation by conjugation by a fourier transform?
+
+% Finite element for Dbar
+function Db=FE_Dbar(M, f1, f2)
+    D0 = spdiags(ones(M,1), 1, M, M); D0(M, 1) = 1;
+    EE = kron(speye(M,M), speye(M,M));
+    D1 = kron(D0, speye(M, M)) - EE;
+    D2 = kron(speye(M, M), D0) - EE;
+    
+
+    Db = (-1i/2)*M*(f1 * D1 + f2 * D2);
+end
+
+
+function M=Mult(V, M)
+    M = spdiags(V, M, M);
+end
+
 
 % misc ----------------------------
-
-function airy_ansatz = airy_ansatz(z,alpha)
-
-    h = 1/alpha;
-    a = 32*pi^3/3;
-    
-    ba = pi/3;
-    b = a*ba;
-        
-    zS = 1i/sqrt(3);
-    
-    om = exp(2*pi*1i/3);
-    
-    al = (2*h)^(2/3)/a^(1/3);
-    
-    w = 1i*(z-zS)/al;
-    
-    c = 2^(2/3)*ba/a^(1/3);
-    
-    c = 0;
-    
-    ww = conj(w) - c*h^(2/3)*w.^2;
-    
-    F0 = airy(ww)+airy(om*ww)+airy(om^2*ww);
-    
-    F2 = airy(ww)+om^2*airy(om*ww)+om*airy(om^2*ww);
-    
-    airy_ansatz = (h^2*w.^3 + sin(alpha/3)).*F0;
-    
-    airy_ansatz = airy_ansatz - h^(2/3)*w.*F2;
-end
 
 function hex(v,height)
     % draw hexagon in current plot
