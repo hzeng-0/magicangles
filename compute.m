@@ -22,7 +22,7 @@ f2 = (4i*pi/sqrt(3))*om^2;
 % Now, for example, we can make the Hamiltonian for non-scalar model.
 % (Using the functions at the end of this file.)
 
-N = 20;
+N = 32;
 
 % Dbar
 
@@ -60,7 +60,8 @@ scattermult([real(Alphas), imag(Alphas)], 5)
 
 %% Protected state for scalar model
 
-[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - 20^2*Up*Um, 1, 'smallest');
+[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - 10^2*Up*Um, 1, 'smallest');
+
 [z,v] = K2X3(V,0,600,e1,e2);
 
 figure
@@ -508,7 +509,7 @@ disp([(1:p)', diag(s)])
 
 fig=figure;
 set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
-til=tiledlayout(2,5,'TileSpacing','tight');
+tiledlayout(2,5,'TileSpacing','tight');
 
 
 minlevel=-1;
@@ -560,7 +561,7 @@ V_conv =X2K(v_conv,z,0,N);
 
 
 figure
-til=tiledlayout(1,4,'TileSpacing','compact');
+tiledlayout(1,4,'TileSpacing','compact');
 
 minlevel=-1;
 levels=linspace(minlevel,0.25,40);
@@ -841,7 +842,7 @@ DyyV = Dy(N,0,f1,f2) * DyV;
 
 
 M = 500;
-[z,v] = K2X(V,0,3*M,e1,e2);
+[~,v] = K2X(V,0,3*M,e1,e2);
 [~,dxv] = K2X(DxV,0,3*M,e1,e2);
 [~,dyv] = K2X(DyV,0,3*M,e1,e2);
 [~,dxxv] = K2X(DxxV,0,3*M,e1,e2);
@@ -864,15 +865,15 @@ A = A(:,M+1+mm:2*M-mm);
 
 
 ind = [2 3];
-[c,s,~] = svd(A(ind,:), "econ");
+[c,~,~] = svd(A(ind,:), "econ");
 x_y(id) = c(3)/c(4);
 
 ind = [4 5];
-[c,s,~] = svd(A(ind,:), "econ");
+[c,~,~] = svd(A(ind,:), "econ");
 xx_yy(id) = c(3)/c(4);
 
 ind = [4 6];
-[c,s,~] = svd(A(ind,:), "econ");
+[c,~,~] = svd(A(ind,:), "econ");
 xx_xy(id) = c(3)/c(4);
 
 end
@@ -1323,13 +1324,13 @@ V2 = Inv(Db) * V2;
 val = V2((N)*(2*N+1) + N+1) *sqrt(sqrt(3)/2);
 V2((N)*(2*N+1) + N+1) = 0;
 
-[z,v] = K2X(V2,0,M,e1,e2);
+[z,v] = K2X3(V2,0,M,e1,e2,'nophase');
 % [~,v1] = K2X3(ROT(N,0)*V2,0,M,e1,e2);
 % [~,v2] = K2X3(ROT(N,0)^2*V2,0,M,e1,e2);
 
 
 V = Up*Um*const_fun(N);
-[~,v0] = K2X(V,0,M,e1,e2);
+[~,v0] = K2X3(V,0,M,e1,e2,'nophase');
 v0 = v0 .^ (-0.25);
 v0(imag(z) > 0) = -1i*v0(imag(z)>0);
 
@@ -1460,21 +1461,59 @@ Alphas = 1./(eigs(Inv(Dk(0))*U, 200));
 plot(real(Alphas), imag(Alphas), 'x', 'Color', 'black')
 
 
-%% D(alpha) representation using position space basis
+%% P(alpha) representation using position space basis
 
-
-V = Up .* Um * const_fun(N);
-M=50;
-[z,VV] = K2X(V, 0, M, e1, e2); VV = VV(:);
+V = sym_potential(10,0,0) * sym_potential(10,0,0).' * const_fun(10);
+M=200;
+[z,v_pot] = K2X(V, 0, M, e1, e2);
 alpha = 10;
-P = 4*FE_Dbar(M, f1, f2)^2 - alpha^2 * Mult(VV, M);
-[~,s,v] = svds(P, 10, 'smallest');
+
+P = 4*FE_Dbar(M, f1, f2)^2 - alpha^2 * Mult(v_pot(:), M);
+
+
+[~,s,v] = svds(P, 3, 'smallest');
+disp(diag(s))
+
+% w = v(:,3);
+w = v(:,3) - v(:,2); % pretty close to right linear combination
+w = reshape(w, [M M]);
+
 
 figure
+tiledlayout(1,2,'TileSpacing','compact')
+minlevel=-16;
+levels=linspace(minlevel,1,28);
+
+% Plot log(abs(u_0))
+
+nexttile
 hold on
-contourf(real(z), imag(z), abs(reshape(v(:,10), [M M])), 32);
+contourf(real(z), imag(z), max(log(abs(w)), minlevel), levels)
+hex(zS); axis equal; colorbar
+
+
+% Plot angle(u_0)
+
+nexttile; hold on
+surf(real(z), imag(z), angle(w), 'EdgeColor', 'none');
+clim([-pi,pi]); colormap(gca,wheelmap);
+hex(zS,10);
+view(2); axis equal;
 colorbar
-axis equal
+
+%% Section of -1 degree line bundle at magic angle
+
+% Let's set up boundary conditions.
+
+% Suppose we are looking for a solution u to D(\alpha)u=0 with the boundary
+% condition:  u * f  is periodic.
+
+% Then note (D(alpha) u)*f = (D(alpha) - (2Dbar f)/f) (u*f)
+
+% Our case is a bit different: we want u_0/f  periodic, where u_0 has no
+% zeros (u_0 = u_{-1} * theta(z))  and f (theta(z)) has a zero.
+
+% Unless we can somehow use Dbar(1/theta(z)) = C delta. Let's try that.
 
 
 
@@ -1540,18 +1579,18 @@ end
 % v(z) = sum V(n1,n2) e^(i<n1 f1 + n2 f2 + k, z>)
 %
 % For given e1,e2,M,   
-% z  will be MxM matrix  with values   z(a,b) = e1*(b-1)/M + e2 * (a-1)/M
+% z  will be MxM matrix  with values   z(a,b) = e1*(a-1)/M + e2*(b-1)/M
 function [z,v] = K2X(V,k,M,e1,e2)
     N = round((sqrt(length(V))-1)/2);
 
-    V0 = reshape(V,2*N+1, 2*N+1); V0 = V0.';
+    V0 = reshape(V,2*N+1, 2*N+1).';
     V = zeros(M);
     V(1:2*N+1, 1:2*N+1)=V0;
     V = circshift(V, [-N,-N]);
 
     v = fft2(V);
 
-    [y1,y2]=meshgrid(0:M-1, 0:M-1);
+    [y2,y1]=meshgrid(0:M-1, 0:M-1);
     z=(e1*y1+e2*y2)/M;
 
     v = v .* exp(0.5i*(k'*z+k*conj(z)));
@@ -1587,10 +1626,10 @@ end
 function [z,v] = K2X3(V,k,M,e1,e2,nophase)
     [z0,v0]=K2X(V,k,M,e1,e2);
 
-    z = [z0-e1-e2, z0-e2; z0-e1, z0];
+    z = [z0-e1-e2, z0-e1; z0-e2, z0];
     
     p2 = exp(-0.5i*(k'*e2+k*e2')); p1 = exp(-0.5i*(k'*e1+k*e1'));
-    v = [v0 *p1 *p2, v0 *p2; v0 *p1, v0];
+    v = [v0 *p1 *p2, v0 *p1; v0 *p2, v0];
     if ~exist('nophase', 'var')
         phase = exp(1i * angle(v0(1)));
         v = v ./  phase;
@@ -1679,22 +1718,22 @@ end
 
 % Next two functions are position space (finite element) representations
 % of Dbar and V.
-% They should be equivalent to the fourier basis representation by conjugation by a fourier transform?
+% Not exactly same as fourier representations.
 
 % Finite element for Dbar
 function Db=FE_Dbar(M, f1, f2)
     D0 = spdiags(ones(M,1), 1, M, M); D0(M, 1) = 1;
-    EE = kron(speye(M,M), speye(M,M));
-    D1 = kron(D0, speye(M, M)) - EE;
-    D2 = kron(speye(M, M), D0) - EE;
-    
+    % D1 = kron(D0, speye(M, M)) - kron(speye(M,M), speye(M,M)) * M;
+    % D2 = kron(speye(M, M), D0) - kron(speye(M,M), speye(M,M)) * M;
+    D1 = kron(D0 - D0', speye(M, M)) * M/2;
+    D2 = kron(speye(M, M), D0 - D0') * M/2;
 
-    Db = (-1i/2)*M*(f1 * D1 + f2 * D2);
+    Db = (1i/2)*(f1 * D2 + f2 * D1) ./ (2*pi);
 end
 
 
-function M=Mult(V, M)
-    M = spdiags(V, M, M);
+function Mat=Mult(V, M)
+    Mat = spdiags(V, 0, M^2, M^2);
 end
 
 
