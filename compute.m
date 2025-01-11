@@ -3,7 +3,7 @@
 % This is basically Professor Zworski's code (that I got a long time ago.)
 % We represent our operators in the fourier basis.
 
-% The code is separated into sections- to run a section, type Ctrl-Enter.
+% The code is separated into sections- in the Matlab editor, type Ctrl-Enter to run a section.
 
 
 % First let's set up some constants:
@@ -61,8 +61,8 @@ scattermult([real(Alphas), imag(Alphas)], 5)
 %% Protected state for scalar model
 
 [~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - 10^2*Up*Um, 1, 'smallest');
-
 [z,v] = K2X3(V,0,600,e1,e2);
+v = v ./ exp(1i*angle(v(1,1)));
 
 figure
 tiledlayout(1,2,'TileSpacing','compact')
@@ -555,7 +555,7 @@ v_conv =  ifft2(fft2(abs(v)) .* fft2(chi)) ./ rad^2;
 v_conv = log(abs(v_conv)) ./ alpha;
 % v_conv = max(log(abs(v)) ./ alpha, -0.5);
 
-V_conv =X2K(v_conv,z,0,N);
+V_conv =X2K(v_conv,0,N,e1,e2);
 [~,Lap_v_conv]=K2X(Dbar(N,0,f1,f2) * Dbar(N,0,f1,f2)' * V_conv, 0, 300, e1,e2);
 
 
@@ -1275,7 +1275,7 @@ chi = ones(rad,rad); chi(300,300) = 0; %chi=circshift(chi, [-rad/2, -rad/2]);
 v_conv =  ifft2(fft2(abs(v)) .* fft2(chi)) ./ rad^2;
 v_conv = v_conv .* exp(1i*angle(v));
 
-V_conv =X2K(v_conv,z,0,N);
+V_conv =X2K(v_conv,0,N,e1,e2);
 [~,Dbar_v_conv]=K2X(Dbar(N,0,f1,f2) * V_conv, 0, 300, e1,e2);
 
 vv = (Dbar_v_conv ./ v_conv) .^ 2;
@@ -1308,12 +1308,12 @@ M = 300;
 
 V = Up*Um*const_fun(N);
 
-[z,v] = K2X(V,0,M,e1,e2);
+[~,v] = K2X(V,0,M,e1,e2);
 v = sqrt(-v);
 
 
 
-V2 = X2K(v,z,0,N);
+V2 = X2K(v,0,N,e1,e2);
 
 Db = Dbar(N,0,f1,f2);
 ww = spdiags([ 0*(1:N) 1 0*(1:N)]', 0, 2*N+1, 2*N+1);
@@ -1464,7 +1464,7 @@ plot(real(Alphas), imag(Alphas), 'x', 'Color', 'black')
 %% P(alpha) representation using position space basis
 
 V = sym_potential(10,0,0) * sym_potential(10,0,0).' * const_fun(10);
-M=200;
+M=300;
 [z,v_pot] = K2X(V, 0, M, e1, e2);
 alpha = 10;
 
@@ -1474,9 +1474,14 @@ P = 4*FE_Dbar(M, f1, f2)^2 - alpha^2 * Mult(v_pot(:), M);
 [~,s,v] = svds(P, 3, 'smallest');
 disp(diag(s))
 
-% w = v(:,3);
-w = v(:,3) - v(:,2); % pretty close to right linear combination
+
+w = v(:,3);
 w = reshape(w, [M M]);
+z = z((1:2:M), (1:2:M)); w = w((1:2:M), (1:2:M));
+
+w = w / norm(w(:));
+w= w * (M/2) / (sqrt(sqrt(3)/2));
+w = w ./ exp(1i*angle(w(1,1)));
 
 
 figure
@@ -1501,19 +1506,56 @@ hex(zS,10);
 view(2); axis equal;
 colorbar
 
+%% D(alpha) using position space basis
+
+k = -K;
+
+M = 200;
+[z,up0] = K2X(sym_potential(10,0,0)*const_fun(10), -2*K, M, e1, e2);
+[~,um0] = K2X(sym_potential(10,0,0).'*const_fun(10), 2*K, M, e1, e2);
+
+Db_maker = @(k) FE_Dbar2(M, f1, f2, e1, e2, ...
+    @(z) 0*z+exp(1i*(k*e1'+k'*e1)/2), @(z) 0*z+exp(1i*(k*e2'+k'*e2)/2));
+Db_1 = Db_maker(k-K);
+Db_2 = Db_maker(k+K);
+
+alpha = 5;
+D = [Db_1, alpha*Mult(up0(:),M); alpha*Mult(um0(:),M), Db_2];
+[~,s,v] = svds(D, 1, 'smallest');
+disp(s)
+v1 = v(1:length(v)/2); v2 = v(1+length(v)/2:end);
+v1 = reshape(v1, [M M]); v2 = reshape(v2, [M M]);
+
+z = z((1:2:M), (1:2:M));
+v1 = v1((1:2:M), (1:2:M));
+v2 = v2((1:2:M), (1:2:M));
+v1 = v1 / norm(v1); v2 = v2 / norm(v2);
+
+
+figure
+
+tiledlayout(1,2,'TileSpacing','compact')
+minlevel=-16;
+levels=linspace(minlevel,1,28);
+
+% Plot log(abs(u_0))
+
+nexttile
+hold on
+contourf(real(z), imag(z), max(log(abs(v1)), minlevel), levels)
+hex(zS); axis equal; colorbar
+
+
+% Plot angle(u_0)
+
+nexttile
+hold on
+contourf(real(z), imag(z), max(log(abs(v2)), minlevel), levels)
+hex(zS); axis equal; colorbar
+
+
 %% Section of -1 degree line bundle at magic angle
 
-% Let's set up boundary conditions.
-
-% Suppose we are looking for a solution u to D(\alpha)u=0 with the boundary
-% condition:  u * f  is periodic.
-
-% Then note (D(alpha) u)*f = (D(alpha) - (2Dbar f)/f) (u*f)
-
-% Our case is a bit different: we want u_0/f  periodic, where u_0 has no
-% zeros (u_0 = u_{-1} * theta(z))  and f (theta(z)) has a zero.
-
-% Unless we can somehow use Dbar(1/theta(z)) = C delta. Let's try that.
 
 
 
@@ -1527,10 +1569,8 @@ colorbar
 % To go from position to fourier space, use X2K.
 % We also have some symmetry operators.
 
-% About fourier basis: a vector is a length (2N+1)^2 column vector, represent 
-% v(z) = \sum_{a,b\in{-N,...,N}} V((2N+1)*(a+N)+b+N+1) e^{i<z, a f1 + b f2>}
-% Note V((2N+1)*(a+N)+b+N+1) = "(reshape(V, [2N+1, 2N+1]) (N+1 + b,  N+1 + a)  ".
-
+% About fourier basis: a vector is a length (2N+1)^2 column vector V, represent 
+% v(z) = \sum_{a,b\in{-N,...,N}} V((2N+1)*(b+N)+a+N+1) e^{i<z, a f1 + b f2+ k>} / sqrt(area_of_(e1,e2))
 
 % Derivatives --------------
 
@@ -1540,12 +1580,12 @@ end
 
 function Dx = Dx(N,k,f1,f2)
     D0 = spdiags((-N:1:N)', 0, 2*N+1, 2*N+1); E = speye(2*N+1, 2*N+1);
-    Dx = (kron(D0 * real(f1), E) + kron(E, D0 * real(f2)) + real(k)*kron(E,E));
+    Dx = kron(E, real(f1) * D0) + kron(real(f2) * D0, E) + real(k)*kron(E,E);
 end
 
 function Dy = Dy(N,k,f1,f2)
     D0 = spdiags((-N:1:N)', 0, 2*N+1, 2*N+1); E = speye(2*N+1, 2*N+1);
-    Dy = (kron(D0 * imag(f1), E) + kron(E, D0 * imag(f2)) + imag(k)*kron(E,E));
+    Dy = kron(E, imag(f1) * D0) + kron(imag(f2) * D0, E) + imag(k)*kron(E,E);
 end
 
 function A = Inv(B) % invert a diagonal matrix
@@ -1557,7 +1597,7 @@ end
 
 function U=fourier_shift(N,n1,n2)
     N = 2*N + 1;
-    U = kron(spdiags(ones(N,1), -n1, N, N),  spdiags(ones(N,1), -n2, N, N));
+    U = kron(spdiags(ones(N,1), -n2, N, N),  spdiags(ones(N,1), -n1, N, N));
 end
 
 % (2K+) Potential with TBG rotation symmetry containing K + n1 f1 + n2 f2
@@ -1567,8 +1607,9 @@ function U=sym_potential(N,n1,n2)
 end
 
 % Fourier representation of constant 1 function
+% WARNING- this is for TBG lattice. for general lattice factor should be sqrt(abs(imag(e1' * e2)))
 function V=const_fun(N)
-    V = kron((-N:N).'==0, (-N:N).'==0) * sqrt(sqrt(3)/2);
+    V = kron((-N:N).'==0, (-N:N).'==0) * sqrt(sqrt(3)/2); 
 end
 
 
@@ -1582,31 +1623,32 @@ end
 % z  will be MxM matrix  with values   z(a,b) = e1*(a-1)/M + e2*(b-1)/M
 function [z,v] = K2X(V,k,M,e1,e2)
     N = round((sqrt(length(V))-1)/2);
-
-    V0 = reshape(V,2*N+1, 2*N+1).';
+    V0 = reshape(V,2*N+1, 2*N+1);
     V = zeros(M);
     V(1:2*N+1, 1:2*N+1)=V0;
     V = circshift(V, [-N,-N]);
 
-    v = fft2(V);
+    v = ifft2(V) * M^2  / sqrt(abs(imag(e1' * e2)));
 
     [y2,y1]=meshgrid(0:M-1, 0:M-1);
     z=(e1*y1+e2*y2)/M;
 
     v = v .* exp(0.5i*(k'*z+k*conj(z)));
-    v = v ./ sqrt(sqrt(3)/2); % normalize for fundamental domain size
 end
 
 % Inverse
-function V=X2K(v,z,k,N)
+function V=X2K(v,k,N,e1,e2)
+    M = size(v, 1);
+    [y2,y1]=meshgrid(0:M-1, 0:M-1);
+    z=(e1*y1+e2*y2)/M;
+
     v = v ./ exp(0.5i*(k'*z+k*conj(z)));
-    v = v .* sqrt(sqrt(3)/2);
     
-    V = ifft2(v);
+    V = fft2(v) * sqrt(abs(imag(e1' * e2))) / M^2;
     
     V = circshift(V, [N,N]);
     V = V(1:2*N+1, 1:2*N+1);
-    V = V.'; V = V(:);
+    V = V(:);
 end
 
 
@@ -1680,7 +1722,6 @@ function R = ROT(N,s)         % k = sK
 end
 
 
-
 % r1: reflect on x axis
 % r2: reflect on y axis
 
@@ -1700,10 +1741,10 @@ end
 
 % General operator permuting fourier basis
 
-% (FV)(F1(m1,m2),F2(m1,m2)) = V(m1,m2)  
+% (FV)(F1(m1,m2),F2(m1,m2)) = V(m1,m2)
 
 function F = PERMK(N,F1,F2)
-    indx =  @(m1,m2) (2*N+1)*(m1+N) + m2+N + 1;
+    indx =  @(m1,m2) (2*N+1)*(m2+N) + m1+N + 1;
     [m1,m2]=meshgrid(-N:N,-N:N); m1=m1(:); m2=m2(:);
 
     fm1 = F1(m1,m2);
@@ -1714,24 +1755,44 @@ function F = PERMK(N,F1,F2)
 end
 
 
+
+
 % Some position space operators --------------
 
 % Next two functions are position space (finite element) representations
 % of Dbar and V.
-% Not exactly same as fourier representations.
+% Not exactly equivalent to fourier representations.
 
-% Finite element for Dbar
+% Finite element for Dbar on periodic functions
 function Db=FE_Dbar(M, f1, f2)
     D0 = spdiags(ones(M,1), 1, M, M); D0(M, 1) = 1;
-    % D1 = kron(D0, speye(M, M)) - kron(speye(M,M), speye(M,M)) * M;
-    % D2 = kron(speye(M, M), D0) - kron(speye(M,M), speye(M,M)) * M;
-    D1 = kron(D0 - D0', speye(M, M)) * M/2;
-    D2 = kron(speye(M, M), D0 - D0') * M/2;
+    D1 = kron(speye(M, M), D0 - D0') * M/(2i);
+    D2 = kron(D0 - D0', speye(M, M)) * M/(2i);
 
-    Db = (1i/2)*(f1 * D2 + f2 * D1) ./ (2*pi);
+    Db = (1/2)*(f1 * D1 + f2 * D2) ./ (2*pi);
+end
+
+% Finite element for Dbar on functions with boundary conditions given by functions H1, H2
+% H1 and H2 are holomorphic "multipliers" defining a holomorphic line bundle:
+%  - functions u satisfying  u(z + e1) = H1(z) u(z),  u(z + e2) = H2(z) u(z),
+% to be multipliers, H1, H2 must satisfy compatibility condition
+function Db=FE_Dbar2(M, f1, f2, e1, e2, H1, H2)
+
+    A = spdiags(ones(M,1), 1, M, M); B = sparse(M,M); B(M,1) = 1;
+    D1_front = kron(speye(M,M), A) + kron(spdiags(H1(e2*(0:M-1)' ./ M) ,0,M,M),   B);
+    D1_back = kron(speye(M,M), A') + kron(spdiags(1./H1(e1*(M-1)/M + e2*(0:M-1)' ./ M) ,0,M,M),   B');
+
+    D2_front = kron(A, speye(M,M)) + kron(B, spdiags(H2(e1*(0:M-1)' ./ M) ,0,M,M));
+    D2_back = kron(A', speye(M,M)) + kron(B', spdiags(1./H2(e2*(M-1)/M + e1*(0:M-1)' ./ M) ,0,M,M));
+
+    D1 = (D1_front - D1_back) * M/(2i);
+    D2 = (D2_front - D2_back) * M/(2i);
+
+    Db = (f1 * D1 + f2 * D2) ./ (4*pi);
 end
 
 
+% Multiply pointwise by V
 function Mat=Mult(V, M)
     Mat = spdiags(V, 0, M^2, M^2);
 end
