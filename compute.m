@@ -57,6 +57,7 @@ Alphas = 1./sqrt(eigs(Ak, 500));
 figure 
 hold on
 scattermult([real(Alphas), imag(Alphas)], 5)
+axis equal
 
 %% Protected state for scalar model
 
@@ -277,8 +278,8 @@ Up2 = sym_potential(N,1,-1); Um2 = Up2.';
 U2 = [0*Up, Up2; Um2, 0*Up];
 
 alphas = @(id) 10;
-theta0 = 0:0.002:1;
-theta = theta0 * pi;
+thetas = 0:0.002:1;
+theta = thetas * pi;
 
 for id=1:length(theta)
     
@@ -1302,89 +1303,6 @@ hold on
 contourf(real(z), imag(z), max(log(abs(v)), -20), 32);
 axis equal; colorbar;
 
-%% Phase function branch cut WKB (from AM's Phys Rev Letter paper on WKB)
-
-M = 300;
-
-V = Up*Um*const_fun(N);
-
-[~,v] = K2X(V,0,M,e1,e2);
-v = sqrt(-v);
-
-
-
-V2 = X2K(v,0,N,e1,e2);
-
-Db = Dbar(N,0,f1,f2);
-ww = spdiags([ 0*(1:N) 1 0*(1:N)]', 0, 2*N+1, 2*N+1);
-Db = Db + kron(ww, ww);
-
-V2 = Inv(Db) * V2;
-
-val = V2((N)*(2*N+1) + N+1) *sqrt(sqrt(3)/2);
-V2((N)*(2*N+1) + N+1) = 0;
-
-[z,v] = K2X3(V2,0,M,e1,e2,'nophase');
-% [~,v1] = K2X3(ROT(N,0)*V2,0,M,e1,e2);
-% [~,v2] = K2X3(ROT(N,0)^2*V2,0,M,e1,e2);
-
-
-V = Up*Um*const_fun(N);
-[~,v0] = K2X3(V,0,M,e1,e2,'nophase');
-v0 = v0 .^ (-0.25);
-v0(imag(z) > 0) = -1i*v0(imag(z)>0);
-
-v = v + 0.5 * (val*z'+val'*z); % (no diff? lol)
-
-
-% vid=VideoWriter('.\results\physics_wkb_3.mp4','MPEG-4'); open(vid);
-% fig=figure;
-% set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
-% 
-% for alpha=0:0.1:10
-
-    % clf(fig);
-    tl=tiledlayout(1,2,'TileSpacing','compact');
-    % title(tl, ['$\alpha = ' sprintf('%.1f', alpha) '$'], 'Interpreter', 'latex');
-
-
-% vv = (exp(1i*v*alpha)  + exp(-1i*v*alpha)) .* v0;
-
-nexttile
-hold on
-title("real part")
-contourf(real(z), imag(z), real(v), 30)
-axis equal; colorbar
-% xlim([-0.63,0.63]), ylim([-0.63,0.63])
-
-nexttile
-hold on
-title("imaginary part")
-contourf(real(z), imag(z), imag(v), 30)
-axis equal; colorbar
-% xlim([-0.63,0.63]), ylim([-0.63,0.63])
-
-% nexttile
-% surf(real(z), imag(z), angle(vv), 'EdgeColor', 'none');
-% clim([-pi,pi]); colormap(gca,wheelmap);view(2);
-% hex(zS,10); axis equal; colorbar
-% xlim([-0.63,0.63]), ylim([-0.63,0.63])
-% 
-% nexttile
-% hold on
-% contourf(real(z), imag(z), max(log(abs(vv)) ./ alpha, -1), -1:0.05:2)
-% hex(zS); axis equal; colorbar
-% xlim([-0.63,0.63]), ylim([-0.63,0.63])
-
-
-%     drawnow;
-%     frame=getframe(fig);
-%     writeVideo(vid,frame);
-% end
-% 
-% close(vid);
-
-
 %% Log of protected state 2x2 matrix (non-scalar)
 
 alpha = 17.6;
@@ -1520,7 +1438,7 @@ Db_1 = Db_maker(k-K);
 Db_2 = Db_maker(k+K);
 
 alpha = 5;
-D = [Db_1, alpha*Mult(up0(:),M); alpha*Mult(um0(:),M), Db_2];
+D = [2*Db_1, alpha*Mult(up0(:),M); alpha*Mult(um0(:),M), 2*Db_2];
 [~,s,v] = svds(D, 1, 'smallest');
 disp(s)
 v1 = v(1:length(v)/2); v2 = v(1+length(v)/2:end);
@@ -1538,23 +1456,244 @@ tiledlayout(1,2,'TileSpacing','compact')
 minlevel=-16;
 levels=linspace(minlevel,1,28);
 
-% Plot log(abs(u_0))
-
 nexttile
 hold on
 contourf(real(z), imag(z), max(log(abs(v1)), minlevel), levels)
 hex(zS); axis equal; colorbar
 
-
-% Plot angle(u_0)
-
-nexttile
 hold on
 contourf(real(z), imag(z), max(log(abs(v2)), minlevel), levels)
 hex(zS); axis equal; colorbar
 
 
 %% Section of -1 degree line bundle at magic angle
+
+% Still not clear how to get this.
+
+% circshift position matrix might help numeric?
+
+M = 400;
+[z,up0] = K2X(sym_potential(10,0,0)*const_fun(10), -2*K, M, e1, e2);
+[~,um0] = K2X(sym_potential(10,0,0).'*const_fun(10), 2*K, M, e1, e2);
+
+k=0;
+n = 1; % degree of line bundle we are tensoring with
+
+Db_maker = @(k) FE_Dbar2(M, f1, f2, e1, e2, ...  % k = 0 --> zeros/poles at z=0
+    @(z) 0*z+exp(1i*(k*e1'+k'*e1)/2 + n*1i*pi), @(z) 0*z+exp( 1i*(k*e2'+k'*e2)/2 +n*(-2*pi*1i*z/e1 -1i*pi*om) ));
+
+
+Db_1 = Db_maker(k-K);
+Db_2 = Db_maker(k+K);
+
+alpha = 9.82907;  % 3.75141 is a magic angle
+DD = [2*Db_1, alpha*Mult(up0(:),M); alpha*Mult(um0(:),M), 2*Db_2];
+[~,s,vvv] = svds(DD, 8, 'smallest');
+disp(s)
+
+
+vv = vvv(:,7);
+v1 = vv(1:length(vv)/2); 
+v2 = vv(1+length(vv)/2:end);
+v1 = reshape(v1, [M M]); 
+v2 = reshape(v2, [M M]);
+
+% z = z((1:2:M), (1:2:M));
+v1 = v1((1:2:M), (1:2:M));
+v2 = v2((1:2:M), (1:2:M));
+% v1 = v1 / norm(v1(:)); v2 = v2 / norm(v2(:));
+
+
+v1 = v1 ./ theta1(z./e1, om);
+v1(1,1) = v1(1,2);
+v1 = v1 / norm(v1);
+
+
+v2 = v2 ./ theta1(z./e1, om);
+v2(1,1) = v2(1,2);
+v2 = v2 / norm(v2);
+
+
+figure
+
+tiledlayout(1,3,'TileSpacing','compact')
+minlevel=-16;
+levels=linspace(minlevel,1,28);
+
+nexttile
+hold on
+contourf(real(z), imag(z), max(log(abs(v1)), minlevel), 30)
+hex(zS); axis equal; colorbar
+
+nexttile
+hold on
+contourf(real(z), imag(z), max(log(abs(v2)), minlevel), 30)
+hex(zS); axis equal; colorbar
+
+nexttile; hold on
+surf(real(z), imag(z), angle(v1), 'EdgeColor', 'none');
+clim([-pi,pi]); colormap(gca,wheelmap);
+hex(zS,10);
+view(2); axis equal;
+colorbar
+
+%% Theta function test
+M = 300;
+[z,up0] = K2X(const_fun(10), 0, M, e1, e2);
+Th = theta1(z./e1, om);
+
+figure('WindowStyle', 'Docked');
+hold on
+contourf(real(z), imag(z), max(log(abs(Th)),-5), 64)
+axis equal
+colorbar
+
+figure('WindowStyle', 'Docked');
+hold on
+surf(real(z), imag(z), angle(Th), 'EdgeColor', 'none');
+clim([-pi,pi]); colormap(gca,wheelmap);
+hex(zS,10);
+view(2); axis equal;
+colorbar
+
+%% Phase function branch cut WKB (from AM's Phys Rev Letter paper on WKB)
+
+M = 2000;
+
+% Get scalar potential as a position space vector:
+V = Up*Um*const_fun(N);
+[z,v] = K2X(V,0,M,e1,e2);
+
+
+% Take square root
+% Matlab sqrt returns number with  -pi <= arg <= pi
+v = sqrt(-v);
+v = 1i*v;
+
+
+% Take fourier transform
+A = X2K(v,0,N,e1,e2); 
+
+% Invert Dbar
+Db = Dbar(N,0,f1,f2);
+ww = sparse(2*N+1, 2*N+1); ww(N+1,N+1) = 1;
+DD = 2i*Db + kron(ww, ww);
+
+% 
+A = Inv(DD) * A;
+a0 = A(N*(2*N+1) + N+1) * sqrt(sqrt(3)/2);
+A(N*(2*N+1) + N+1) = 0;
+
+
+% transform back to position basis
+[z,psi] = K2X(A,0,M,e1,e2);
+psi = psi + 0.5*(a0'*z+a0*conj(z));  % 1st order wkb thingy, valid (up to holomorphic function) away from branch cut?
+
+
+% Get 2 wkb solutions
+[~,vv] = K2X(Up*Um*const_fun(N),0,M,e1,e2); % potential v
+vv = vv .^ (-0.25);
+% vv(imag(z) > 0) = -1i*vv(imag(z)>0);
+
+
+alpha = 10;
+v1 = exp(1i*psi*alpha) .* vv;
+v2 = exp(-1i*psi*alpha) .* vv;
+
+%% (continued) wronskian with actual solution near edges
+
+
+% protected state
+[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - 10^2*Up*Um, 1, 'smallest');
+[z,v] = K2X(V,0,M,e1,e2);
+v = v ./ exp(1i*angle(v(1,1)));
+
+% set of z to calculate for
+step = 0.001;
+[xx, yy] = meshgrid(-0.05:step:0.05, sqrt(3)/3-0.03:step:2*sqrt(3)/3+0.03);
+z = xx + 1i*yy;
+
+% interpolate
+
+apply = @(f) arrayfun(@(z) interpolate(e1, e2, f, M, real(z), imag(z)), z);
+
+
+u = apply(v);
+u1 = apply(v1);
+u2 = apply(v2);
+
+
+
+du = 0.5*(u - circshift(u, [0 1]) + 1i* (u - circshift(u, [1 0])) )./step;
+du1 = 0.5*(u1 - circshift(u1, [0 1]) + 1i* (u1 - circshift(u1, [1 0])) )./step;
+du2 = 0.5*(u2 - circshift(u2, [0 1]) + 1i* (u2 - circshift(u2, [1 0])) ) ./step;
+
+% du = 0.5*(circshift(u, [0 -1]) - circshift(u, [0 1]) + 1i* (circshift(u, [-1 0])- circshift(u, [1 0])) )./step;
+% du1 = 0.5*(circshift(u1, [0 -1]) - circshift(u1, [0 1]) + 1i* (circshift(u1, [-1 0]) - circshift(u1, [1 0])) )./step;
+% du2 = 0.5*(circshift(u2, [0 -1]) - circshift(u2, [0 1]) + 1i* (circshift(u2, [-1 0]) - circshift(u2, [1 0])) ) ./step;
+
+z = z(2:end, 2:end);
+u = u(2:end, 2:end);
+u1 = u1(2:end, 2:end);
+u2 = u2(2:end, 2:end);
+du = du(2:end, 2:end);
+du1 = du1(2:end, 2:end);
+du2 = du2(2:end, 2:end);
+
+
+
+% calculate finite element wronskian
+W1 = du1.*u - u1.*du ;
+W2 = du2.*u - u2.*du ;
+W3 = du2.*u1 - du1.*u2;
+%%
+% plot
+figure
+hold on
+contourf(real(z), imag(z), real(u), 50)
+xline(0)
+plot(0,2*sqrt(3)/3,'o')
+plot(0,sqrt(3)/3,'o')
+colorbar
+axis equal
+
+%%
+
+figure
+hold on
+contourf(real(z), imag(z), real((u1 .* W2 - u2 .* W1) ./ W3), 100)
+xline(0)
+plot(0,2*sqrt(3)/3,'o')
+plot(0,sqrt(3)/3,'o')
+colorbar
+axis equal
+
+% how close is resulting RHS of 8.1
+
+
+% what are zeros
+
+% % compare
+uu = (u1 .* W2 - u2 .* W1) ./ W3;
+disp( max(abs(u), [], 'all') )
+disp( max(abs(u-uu), [], 'all') )
+
+% how holomorphic are wronskians
+disp( norm(W1))
+
+dW1 = 0.5*(W1 - circshift(W1, [0 1]) + 1i* (W1 - circshift(W1, [1 0])) );
+dW1 = dW1(2:end, 2:end);
+zz = z(2:end, 2:end);
+disp(norm(dW1))
+%%
+figure
+hold on
+contourf(real(zz), imag(zz), real(W1(2:end, 2:end)), 100)
+% xline(0)
+plot(0,2*sqrt(3)/3,'o')
+plot(0,sqrt(3)/3,'o')
+colorbar
+axis equal
 
 
 
@@ -1780,10 +1919,10 @@ function Db=FE_Dbar2(M, f1, f2, e1, e2, H1, H2)
 
     A = spdiags(ones(M,1), 1, M, M); B = sparse(M,M); B(M,1) = 1;
     D1_front = kron(speye(M,M), A) + kron(spdiags(H1(e2*(0:M-1)' ./ M) ,0,M,M),   B);
-    D1_back = kron(speye(M,M), A') + kron(spdiags(1./H1(e1*(M-1)/M + e2*(0:M-1)' ./ M) ,0,M,M),   B');
+    D1_back = kron(speye(M,M), A') + kron(spdiags(1./H1(e1*(-1)/M + e2*(0:M-1)' ./ M) ,0,M,M),   B');
 
     D2_front = kron(A, speye(M,M)) + kron(B, spdiags(H2(e1*(0:M-1)' ./ M) ,0,M,M));
-    D2_back = kron(A', speye(M,M)) + kron(B', spdiags(1./H2(e2*(M-1)/M + e1*(0:M-1)' ./ M) ,0,M,M));
+    D2_back = kron(A', speye(M,M)) + kron(B', spdiags(1./H2(e2*(-1)/M + e1*(0:M-1)' ./ M) ,0,M,M));
 
     D1 = (D1_front - D1_back) * M/(2i);
     D2 = (D2_front - D2_back) * M/(2i);
@@ -1799,6 +1938,31 @@ end
 
 
 % misc ----------------------------
+
+function result=theta0(z, tau)
+
+    result = 0 * z;
+    N = 200;
+    for n=-N:N
+
+        result = result + exp(pi*1i*n^2*tau + 2i*pi*n*z);
+
+    end
+
+end
+
+function result=theta1(z, tau)
+
+    result = 0 * z;
+    N = 200;
+    for n=-N:N
+
+        result = result + exp(pi*1i*(n+0.5)^2*tau + 2i*pi*(n+0.5)*(z+0.5));
+
+    end
+
+end
+
 
 function hex(v,height)
     % draw hexagon in current plot
@@ -1833,7 +1997,6 @@ end
 
 function fQ=interpolate(e1,e2,f,M,xQ,yQ)
     % given function on fund domain (output of K2X), interpolate to z=(x,y)
-
     T = [real(e1), real(e2); imag(e1), imag(e2)];
     v = T^(-1) * [xQ; yQ];
     v = v - floor(v); v = ceil(v*M); v(v==0) = 1;
