@@ -22,7 +22,7 @@ f2 = (4i*pi/sqrt(3))*om^2;
 % Now, for example, we can make the Hamiltonian for non-scalar model.
 % (Using the functions at the end of this file.)
 
-N = 32;
+N = 50;
 
 % Dbar
 
@@ -47,12 +47,12 @@ save_angles=load('.\angles\1_-2_0.0002_circle.mat', 'save_angles').('save_angles
 %% Calculate magic angles with T_k
 
 % for non-scalar (original) model
-Ak = Inv(2*Db_1) * Up * Inv(2*Db_2) * Um;
+% Ak = Inv(2*Db_1) * Up * Inv(2*Db_2) * Um;
 
 % for scalar model
-% Ak = Inv(4*Dbar(N,K,f1,f2)^2) *  Up * Um;
+Ak = Inv(4*Dbar(N,K,f1,f2)^2) *  Up * Um;
 
-Alphas = 1./sqrt(eigs(Ak, 500));
+Alphas = 1./sqrt(eigs(Ak, 200));
 
 figure 
 hold on
@@ -608,7 +608,7 @@ ylim([-1.721,0]), xlim([-0.5,0.5]);
 
 % saveas(gcf,'./results/Laplacian_of_phi_1.png')
 
-%% (FIX) Conjugate by multiplication with e^(phi/h)
+%% Conjugate by multiplication with e^(phi/h)
 
 M = 300;
 figure
@@ -1558,7 +1558,7 @@ colorbar
 
 %% Phase function branch cut WKB (from AM's Phys Rev Letter paper on WKB)
 
-M = 2000;
+M = 300;
 
 % Get scalar potential as a position space vector:
 V = Up*Um*const_fun(N);
@@ -1569,6 +1569,20 @@ V = Up*Um*const_fun(N);
 % Matlab sqrt returns number with  -pi <= arg <= pi
 v = sqrt(-v);
 v = 1i*v;
+
+figure
+hold on
+contourf(real(z), imag(z), real(v), 32)
+hex(zS)
+axis equal
+colorbar
+
+figure
+hold on
+contourf(real(z), imag(z), imag(v), 32)
+hex(zS)
+axis equal
+colorbar
 
 
 % Take fourier transform
@@ -1587,8 +1601,21 @@ A(N*(2*N+1) + N+1) = 0;
 
 % transform back to position basis
 [z,psi] = K2X(A,0,M,e1,e2);
-psi = psi + 0.5*(a0'*z+a0*conj(z));  % 1st order wkb thingy, valid (up to holomorphic function) away from branch cut?
+psi = psi + 0.5*(a0'*z+a0*conj(z));
 
+figure
+hold on
+contourf(real(z), imag(z), real(psi), 32)
+hex(zS)
+axis equal
+colorbar
+
+figure
+hold on
+contourf(real(z), imag(z), imag(psi), 32)
+hex(zS)
+axis equal
+colorbar
 
 % Get 2 wkb solutions
 [~,vv] = K2X(Up*Um*const_fun(N),0,M,e1,e2); % potential v
@@ -1596,41 +1623,47 @@ vv = vv .^ (-0.25);
 % vv(imag(z) > 0) = -1i*vv(imag(z)>0);
 
 
-alpha = 10;
+alpha = 15;
 v1 = exp(1i*psi*alpha) .* vv;
 v2 = exp(-1i*psi*alpha) .* vv;
 
 %% (continued) wronskian with actual solution near edges
 
+% V1 = X2K(v1, 0, N, e1, e2);
+% V2 = X2K(v2, 0, N, e1, e2);
+
 
 % protected state
-[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - 10^2*Up*Um, 1, 'smallest');
-[z,v] = K2X(V,0,M,e1,e2);
-v = v ./ exp(1i*angle(v(1,1)));
+[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
+[~,v_temp] = K2X(V,0,300,e1,e2);
+V = V / exp(1i*angle(v_temp(1,1)));
+
+
 
 % set of z to calculate for
-step = 0.001;
+step = 0.003;
 [xx, yy] = meshgrid(-0.05:step:0.05, sqrt(3)/3-0.03:step:2*sqrt(3)/3+0.03);
 z = xx + 1i*yy;
 
-% interpolate
 
-apply = @(f) arrayfun(@(z) interpolate(e1, e2, f, M, real(z), imag(z)), z);
+% psi = compute_psi(z);
 
+% figure
+% hold on
+% contourf(real(z), imag(z), real(psi), 100);
+% hex(zS)
+% axis equal
 
-u = apply(v);
-u1 = apply(v1);
-u2 = apply(v2);
+aa = K2Vect(A,z,f1,f2,32);
+vv = K2Vect(Up*Um*const_fun(N),z,f1,f2,32);
+vv = vv .^ -0.25;
 
-
-
-du = 0.5*(u - circshift(u, [0 1]) + 1i* (u - circshift(u, [1 0])) )./step;
-du1 = 0.5*(u1 - circshift(u1, [0 1]) + 1i* (u1 - circshift(u1, [1 0])) )./step;
+u = K2Vect(V,z,f1,f2,32);
+du = K2Vect(Dbar(N,0,f1,f2) * V,z,f1,f2,32);
+u1 = exp(1i*aa*alpha) .* vv;
+u2 = exp(-1i*aa*alpha) .* vv;
+du1 = 0.5*(u1 - circshift(u1, [0 1]) + 1i* (u1 - circshift(u1, [1 0])) ) ./step;
 du2 = 0.5*(u2 - circshift(u2, [0 1]) + 1i* (u2 - circshift(u2, [1 0])) ) ./step;
-
-% du = 0.5*(circshift(u, [0 -1]) - circshift(u, [0 1]) + 1i* (circshift(u, [-1 0])- circshift(u, [1 0])) )./step;
-% du1 = 0.5*(circshift(u1, [0 -1]) - circshift(u1, [0 1]) + 1i* (circshift(u1, [-1 0]) - circshift(u1, [1 0])) )./step;
-% du2 = 0.5*(circshift(u2, [0 -1]) - circshift(u2, [0 1]) + 1i* (circshift(u2, [-1 0]) - circshift(u2, [1 0])) ) ./step;
 
 z = z(2:end, 2:end);
 u = u(2:end, 2:end);
@@ -1639,61 +1672,129 @@ u2 = u2(2:end, 2:end);
 du = du(2:end, 2:end);
 du1 = du1(2:end, 2:end);
 du2 = du2(2:end, 2:end);
+vv = vv(2:end, 2:end);
 
 
+% u1 = K2Vect(V1,z,f1,f2,32);
+% du1 = K2Vect(Dbar(N,0,f1,f2) * V1,z,f1,f2,32);
+% u2 = K2Vect(V2,z,f1,f2,32);
+% du2 = K2Vect(Dbar(N,0,f1,f2) * V2,z,f1,f2,32);
 
-% calculate finite element wronskian
-W1 = du1.*u - u1.*du ;
-W2 = du2.*u - u2.*du ;
-W3 = du2.*u1 - du1.*u2;
-%%
+
+% wronskians
+w1 = du1.*u - u1.*du ;
+w2 = du2.*u - u2.*du ;
+w3 = du2.*u1 - du1.*u2;
+
+w1 = w1 ./ w3; w2 = w2 ./ w3;
+
+
+figure
+hold on
+contourf(real(z), imag(z), min(max(imag(w1), -num), num), 100)
+xline(0)
+plot(0,2*sqrt(3)/3,'o')
+plot(0,sqrt(3)/3,'o')
+colorbar
+axis equal
+
+%% (continued) compare actual solution and wkb on edge
+
+alpha =15;
+xx = (sqrt(3)/3:0.002:2*sqrt(3)/3) * 1i;
+aa = K2Vect(A,xx,f1,f2,32);
+aa = aa + 0.5*(a0'*xx+a0*conj(xx));
+vv = K2Vect(Up*Um*const_fun(N),xx,f1,f2,32);
+
+u2 = cos(alpha * aa) .* (vv .^ -0.25);
+u2 = min(u2, 1);
+u2 = u2 / max(u2);
+
+uu = K2Vect(V, xx, f1, f2, 32);
+uu = uu / max(uu);
+
+
 % plot
 figure
 hold on
-contourf(real(z), imag(z), real(u), 50)
-xline(0)
-plot(0,2*sqrt(3)/3,'o')
-plot(0,sqrt(3)/3,'o')
-colorbar
-axis equal
+plot(imag(xx), u2);
+plot(imag(xx), uu);
 
-%%
+
+xline(sqrt(3)/3)
+xline(2*sqrt(3)/3)
+yline(0)
+
+
+%% (continued) comparison of exponential growth rate near edge
+
+
+alpha = 15;
+
+
+% actual solution
+[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
+fig=figure;
+vid=VideoWriter('.\results\physics_growth_comparison_2.mp4','MPEG-4'); open(vid)
+% set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+for s=-0.5*sqrt(3)*1/2:0.005:0.5*sqrt(3)*1/2
+x = (-0.5:0.01:0.5) + sqrt(3)*1i/2 + 1i*s;
+
+%
+v = K2Vect(V,x,f1,f2,N);
+psi = K2Vect(A,x,f1,f2,N);
+psi = imag(psi);
+
+clf(fig)
+hold on
+title("$\psi$ and $\log|u|$ for $\alpha = 15$", 'Interpreter', 'latex')
+plot(x, log(abs(v)) / alpha)
+plot(x, psi);
+plot(x, -psi);
+
+drawnow
+frame=getframe(fig);
+writeVideo(vid, frame)
+
+end
+
+close(vid)
+
+%% Magic angles for other rotation eigenspace at k=0
+
+Up = sym_potential(N,0,0);
+Um = Up.';
+Up2 = sym_potential(N,1,-1); Um2 = Up2.';
+lam = 0;
+Up = Up + lam*Up2;
+Um = Um + lam*Um2;
+
+
+R = ROT(N,0);
+M = ROT_INC(N,f1,f2);
+
+
+Proj = (R^0 + om*R^1 + om' * R^2) / 3;
+Proj2 = (R^0 + om'*R^1 + om * R^2) / 3;
+
+
+D = M' * Dbar(N,0,f1,f2) * M; % rotation dbar
+V = M'*(Up*Um)*(3*Proj)*M; % rotation V
+
+T = Inv(4*D^2) * V;
+
+alphas = 1./sqrt(eigs(T, 100));
 
 figure
 hold on
-contourf(real(z), imag(z), real((u1 .* W2 - u2 .* W1) ./ W3), 100)
-xline(0)
-plot(0,2*sqrt(3)/3,'o')
-plot(0,sqrt(3)/3,'o')
-colorbar
-axis equal
-
-% how close is resulting RHS of 8.1
+% scattermult([real(Alphas), imag(Alphas)], 5)
+plot(real(alphas), imag(alphas), 'x')
+% yline(0)
 
 
-% what are zeros
-
-% % compare
-uu = (u1 .* W2 - u2 .* W1) ./ W3;
-disp( max(abs(u), [], 'all') )
-disp( max(abs(u-uu), [], 'all') )
-
-% how holomorphic are wronskians
-disp( norm(W1))
-
-dW1 = 0.5*(W1 - circshift(W1, [0 1]) + 1i* (W1 - circshift(W1, [1 0])) );
-dW1 = dW1(2:end, 2:end);
-zz = z(2:end, 2:end);
-disp(norm(dW1))
-%%
-figure
-hold on
-contourf(real(zz), imag(zz), real(W1(2:end, 2:end)), 100)
-% xline(0)
-plot(0,2*sqrt(3)/3,'o')
-plot(0,sqrt(3)/3,'o')
-colorbar
-axis equal
+% F = @(V0) sqrt(3)*Proj*M*V0;
+% F2 = @(V0) sqrt(3)*Proj2*M*V0;
 
 
 
@@ -1702,11 +1803,6 @@ axis equal
 
 % Below are functions related to the space L^2_k(C/(Z e1 + Z e2); C) 
 % (or after fourier transform,  L^2(Z f1 + Z f2 + k; C) ).
-
-% We represent our operators (Dbar, V, etc) in the fourier basis.
-% To go from fourier to position space, use (K2X, K2X2, K2X3, K2X4).
-% To go from position to fourier space, use X2K.
-% We also have some symmetry operators.
 
 % About fourier basis: a vector is a length (2N+1)^2 column vector V, represent 
 % v(z) = \sum_{a,b\in{-N,...,N}} V((2N+1)*(b+N)+a+N+1) e^{i<z, a f1 + b f2+ k>} / sqrt(area_of_(e1,e2))
@@ -1752,7 +1848,6 @@ function V=const_fun(N)
 end
 
 
-
 % Fourier transforms -----------
 
 % Get position-space vector v corresponding to k-space vector V:
@@ -1790,8 +1885,24 @@ function V=X2K(v,k,N,e1,e2)
     V = V(:);
 end
 
+% For specific set of points
+function v = K2Vect(V,z,f1,f2,Nmax)
+    N = round((sqrt(length(V))-1)/2);
+    V = reshape(V,2*N+1, 2*N+1);
+    v = 0 * z;
 
-% Same as K2X but do for two layers (D(alpha) is 2x2 matrix)
+    for ii = -Nmax:Nmax
+        for jj = -Nmax:Nmax
+            k = ii * f1 + jj * f2;
+            v = v + V(ii+N+1, jj+N+1) * exp(0.5i*(k'*z + k*conj(z)));
+        end
+
+    end
+    v = v / sqrt(sqrt(3)/2);
+end
+
+% Same as K2X but do for two layers (D(alpha) is 2x2 matrix), and correct
+% for phase
 function [z,v1,v2] = K2X2(V,k,M,e1,e2)
     K = 4*pi/3;
 
@@ -1802,31 +1913,27 @@ function [z,v1,v2] = K2X2(V,k,M,e1,e2)
     v1=v1 ./ phase; v2=v2./phase;
 end
 
-% Same as K2X, K2X2 but repeat over some copies of fundamental domain
+% Same as K2X, K2X2 but repeat over some copies of fundamental domain,
+% and choose a phase
 
-function [z,v] = K2X3(V,k,M,e1,e2,nophase)
+function [z,v] = K2X3(V,k,M,e1,e2)
     [z0,v0]=K2X(V,k,M,e1,e2);
 
     z = [z0-e1-e2, z0-e1; z0-e2, z0];
     
     p2 = exp(-0.5i*(k'*e2+k*e2')); p1 = exp(-0.5i*(k'*e1+k*e1'));
     v = [v0 *p1 *p2, v0 *p1; v0 *p2, v0];
-    if ~exist('nophase', 'var')
-        phase = exp(1i * angle(v0(1)));
-        v = v ./  phase;
-    end
+    phase = exp(1i * angle(v0(1)));
+    v = v ./  phase;
 end
 
-function [z,v1,v2] = K2X4(V,k,M,e1,e2,nophase)
+function [z,v1,v2] = K2X4(V,k,M,e1,e2)
     K = 4*pi/3;
 
     [z,v1] = K2X3(V(1:length(V)/2),k-K,M,e1,e2);
     [~,v2] = K2X3(V(1+length(V)/2:end),k+K,M,e1,e2);
-
-    if ~exist('nophase', 'var')
-        phase=exp(1i*angle(v1(length(v1)/2)));
-        v1=v1 ./ phase; v2=v2./phase;
-    end
+    phase=exp(1i*angle(v1(length(v1)/2)));
+    v1=v1 ./ phase; v2=v2./phase;
 end
 
 
@@ -1834,14 +1941,12 @@ end
 % Symmetries of TBG ---------------
 
 % For k in {0,K,-K}, C[u](x) = u(wx) acts on L^2_k(C;C^2)
-
 function C = ROT2(N,s)         % k = sK
     C = [ROT(N,s-1),                 sparse((2*N+1)^2,(2*N+1)^2); 
         sparse((2*N+1)^2,(2*N+1)^2), ROT(N,s+1)];
 end
 
 % Project onto eigenspace with Cu = w^r u
-
 function [V0,V1,V2] = PROJC(N,V,s)
     om = exp(2i*pi/3); R = ROT2(N,s);
 
@@ -1851,49 +1956,56 @@ function [V0,V1,V2] = PROJC(N,V,s)
     V0 = V0 * V; V1 = V1 * V; V2 = V2 * V;
 end
 
+% Inclusion of V, L^2_0(C;C^1) = V + RV + R^2V + C.
+function M = ROT_INC(N,f1,f2)
+    [yy,xx] = meshgrid(-N:N, -N:N);
+    k = xx * f1 + yy * f2;
+    k = k(:);
+    vv = find( (abs(k) > 0.0001) & (angle(k) >= -pi/3-0.00001) & (angle(k) < pi/3 - 0.000001) );   % # 0s matters?
+    m = length(vv);
+    
+    M = sparse(vv, 1:m, ones(m,1), (2*N+1)^2, m);
+end
+
 
 % For k in {0,K,-K}, R[u](x) = u(wx) acts on L^2_k(C;C^1)
-
 function R = ROT(N,s)         % k = sK
-    f1 = @(m1,m2) s+m2-m1;     % multiplication by w^-1 on k+Lambda^*
-    f2 = @(m1,m2) -m1;
-    R = PERMK(N,f1,f2);
+    F1 = @(n1,n2) s+n2-n1;     % multiplication by w^-1 on k+Lambda^*
+    F2 = @(n1,n2) -n1;
+    R = PERMK(N,F1,F2);
 end
 
 
-% r1: reflect on x axis
-% r2: reflect on y axis
-
-% To act on L^2_k(C;C), must have R(k)-k = s1 e1 + s2 e2 for some integers s1,s2
-
-function R = REF(N,s1,s2,r1,r2)
-    if mod(r1+r2,2)==0
-        fun1 = @(m1,m2) s1+m1*(-1)^r1;
-        fun2 = @(m1,m2) s1+m2*(-1)^r1;
-    else
-        fun1 = @(m1,m2) s1+m2*(-1)^r1;
-        fun2 = @(m1,m2) s2+m1*(-1)^r1;
-    end
-    R = PERMK(N,fun1,fun2);
-end
-
+% % r1: reflect on x axis
+% % r2: reflect on y axis
+% 
+% % To act on L^2_k(C;C), must have R(k)-k = s1 e1 + s2 e2 for some integers s1,s2
+% 
+% function R = REF(N,s1,s2,r1,r2)
+%     if mod(r1+r2,2)==0
+%         fun1 = @(m1,m2) s1+m1*(-1)^r1;
+%         fun2 = @(m1,m2) s1+m2*(-1)^r1;
+%     else
+%         fun1 = @(m1,m2) s1+m2*(-1)^r1;
+%         fun2 = @(m1,m2) s2+m1*(-1)^r1;
+%     end
+%     R = PERMK(N,fun1,fun2);
+% end
 
 % General operator permuting fourier basis
 
-% (FV)(F1(m1,m2),F2(m1,m2)) = V(m1,m2)
+% (FV)(F1(n1,n2),F2(n1,n2)) = V(n1,n2)
 
 function F = PERMK(N,F1,F2)
     indx =  @(m1,m2) (2*N+1)*(m2+N) + m1+N + 1;
-    [m1,m2]=meshgrid(-N:N,-N:N); m1=m1(:); m2=m2(:);
+    [n2,n1]=meshgrid(-N:N,-N:N); n1=n1(:); n2=n2(:);
 
-    fm1 = F1(m1,m2);
-    fm2 = F2(m1,m2);
+    fm1 = F1(n1,n2);
+    fm2 = F2(n1,n2);
 
     mask = fm1 <= N & fm1 >= -N & fm2 <= N & fm2 >= -N;
-    F = sparse(indx(fm1(mask),fm2(mask)), indx(m1(mask),m2(mask)), ones(length(find(mask)),1), (2*N+1)^2, (2*N+1)^2);
+    F = sparse(indx(fm1(mask),fm2(mask)), indx(n1(mask),n2(mask)), ones(length(find(mask)),1), (2*N+1)^2, (2*N+1)^2);
 end
-
-
 
 
 % Some position space operators --------------
@@ -1912,9 +2024,9 @@ function Db=FE_Dbar(M, f1, f2)
 end
 
 % Finite element for Dbar on functions with boundary conditions given by functions H1, H2
-% H1 and H2 are holomorphic "multipliers" defining a holomorphic line bundle:
-%  - functions u satisfying  u(z + e1) = H1(z) u(z),  u(z + e2) = H2(z) u(z),
-% to be multipliers, H1, H2 must satisfy compatibility condition
+% H1 and H2 are holomorphic multipliers defining a line bundle:
+%  sections are { u satisfying  u(z + e1) = H1(z) u(z),  u(z + e2) = H2(z) u(z)  }
+% H1, H2 must satisfy compatibility condition
 function Db=FE_Dbar2(M, f1, f2, e1, e2, H1, H2)
 
     A = spdiags(ones(M,1), 1, M, M); B = sparse(M,M); B(M,1) = 1;
@@ -1930,7 +2042,6 @@ function Db=FE_Dbar2(M, f1, f2, e1, e2, H1, H2)
     Db = (f1 * D1 + f2 * D2) ./ (4*pi);
 end
 
-
 % Multiply pointwise by V
 function Mat=Mult(V, M)
     Mat = spdiags(V, 0, M^2, M^2);
@@ -1940,29 +2051,20 @@ end
 % misc ----------------------------
 
 function result=theta0(z, tau)
-
     result = 0 * z;
     N = 200;
     for n=-N:N
-
         result = result + exp(pi*1i*n^2*tau + 2i*pi*n*z);
-
     end
-
 end
 
 function result=theta1(z, tau)
-
     result = 0 * z;
     N = 200;
     for n=-N:N
-
         result = result + exp(pi*1i*(n+0.5)^2*tau + 2i*pi*(n+0.5)*(z+0.5));
-
     end
-
 end
-
 
 function hex(v,height)
     % draw hexagon in current plot
