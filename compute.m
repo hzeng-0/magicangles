@@ -23,14 +23,11 @@ Up = sym_potential(N,0,0);
 Um = Up.';
 %for f_{-2}, use   Up2 = sym_potential(N,1,-1); Um2 = Up2.';
 
-
-%% BASICS ---------------------------
-%%
+%% BASICS ---------------------------------------
 %% Potential function V
 
 V = Up*Um*const_fun(N);
-[z,v] = K2X3(V,0,300,e1,e2);
-% v = sqrt(v);
+[z,v] = F2X3(V,0,300,e1,e2);
 
 fig=figure;
 set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1])
@@ -43,11 +40,11 @@ hex(zS); axis equal; colorbar
 xlim([-0.63,0.63]), ylim([-0.63,0.63])
 
 % angle(V)
-nexttile; hold on
+nexttile; 
+figure
+hold on
 surf(real(z), imag(z), angle(v), 'EdgeColor', 'none');
 clim([-pi,pi]); colormap(gca,wheelmap);
-hex(zS,10); view(2); axis equal; colorbar
-xlim([-0.63,0.63]), ylim([-0.63,0.63])
 
 
 %% Magic angles for scalar and original model
@@ -56,13 +53,13 @@ xlim([-0.63,0.63]), ylim([-0.63,0.63])
 % Ak = Inv(2*Dbar(N, -K, f1, f2)) * Up * Inv(2*Dbar(N, +K, f1, f2)) * Um;
 
 % for scalar model
-Ak = Inv(4*Dbar(N,K,f1,f2)^2) *  Up * Um;
+Ak = Inv(4*Dbar(N,-K,f1,f2)^2) *  Up * Um;
 
 Alphas = 1./sqrt(eigs(Ak, 200));
 
-figure 
+% figure 
 hold on
-scattermult([real(Alphas), imag(Alphas)], 5)
+plot(real(Alphas), imag(Alphas), 'o')
 axis equal
 
 % %% Retrieve magic angles
@@ -71,7 +68,7 @@ axis equal
 %% Protected state for scalar model
 
 [~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - 10^2*Up*Um, 1, 'smallest');
-[z,v] = K2X3(V,0,600,e1,e2);
+[z,v] = F2X3(V,0,600,e1,e2);
 v = v ./ exp(1i*angle(v(1,1)));
 
 figure
@@ -97,14 +94,8 @@ hex(zS,10);
 view(2); axis equal;
 xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
 colorbar;
-%% When is there solution for other rotation eigenspace at k=0 for scalar model
 
-Up = sym_potential(N,0,0);
-Um = Up.';
-Up2 = sym_potential(N,1,-1); Um2 = Up2.';
-lam = 0;
-Up = Up + lam*Up2;
-Um = Um + lam*Um2;
+%% When is there solution for other rotation eigenspace at k=0 for scalar model
 
 % s: k = sK. 
 % t: rotation eigenspace u(\om z) = \om^{-t} u(z}.
@@ -114,13 +105,14 @@ Um = Um + lam*Um2;
 s=0;
 t=1;
 
+% s=1, t = 0, 2 coincide
+
 
 R = ROT(N,s);
 Inc = ROT_INC(N,s,f1,f2);
 
 
 Proj = @(t) (R^0 + om^t*R^1 + om'^t * R^2) / 3;
-
 
 
 
@@ -133,21 +125,201 @@ alphas = 1./sqrt(eigs(T, 100));
 
 figure
 hold on
-scattermult([real(Alphas), imag(Alphas)], 5)
+% scattermult([real(Alphas), imag(Alphas)], 10)
 plot(real(alphas), imag(alphas), 'o')
 % yline(0)
+axis equal
+
+% alpha = alphas(abs(alphas - 1.4690) < 0.01);     % double magic angle
+% alpha = alphas(abs(alphas - (8.622 + 2.662i)) < 0.01);     % double magic angle
+
+% % alpha = alphas(abs(alphas - (3.51124 + 1.32672i)) < 0.01);   % single
+% % alpha = alphas(abs(alphas - (1.89989 + 1.13403i)) < 0.01);   % triple
+% 
+% 
+% F = @(U0) sqrt(3)*Proj(t)*Inc*U0;
+% 
+% [~,s,U] = svds(4*D^2 - alpha^2 * V, 1, 'smallest');
+% disp(s)
+% U = F(U);
+% [z,u] = F2X3(U,s*K,300,e1,e2, 'nophase');
+% [~,du] = F2X3(Dbar(N,s*K,f1,f2)*U,0,300,e1,e2, 'nophase');
+% 
+% 
+% figure
+% tiledlayout(1,2,'TileSpacing','compact')
+% minlevel=-16;
+% levels=linspace(minlevel,1,28);
+% 
+% 
+% nexttile; hold on
+% surf(real(z), imag(z), angle(u), 'EdgeColor', 'none');
+% clim([-pi,pi]); colormap(gca,wheelmap);
+% hex(zS,10);
+% view(2); axis equal;
+% xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+% colorbar;
+% 
+% nexttile; hold on
+% surf(real(z), imag(z), angle(du), 'EdgeColor', 'none');
+% clim([-pi,pi]); colormap(gca,wheelmap);
+% hex(zS,10);
+% view(2); axis equal;
+% xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+% colorbar;
+
+%% TEMP - draw eigenfunctions
 
 
-% F = @(U0) sqrt(3)*Proj*M*U0;
-% F2 = @(U0) sqrt(3)*Proj2*M*U0;
 
+R = ROT(N,0);
+
+
+Proj = @(t) (R^0 + om'^t*R^1 + om^t * R^2) / 3;
+
+
+
+% Ak = Inv(4*Dbar(N,K,f1,f2)^2) *  Up * Um;
+% 
+% alphas = 1./sqrt(eigs(Ak, 200));
+
+% alpha = alphas(abs(alphas - 1.4690) < 0.01);     % double magic angle
+% alpha = alphas(abs(alphas - (8.622 + 2.662i)) < 0.01);     % double magic angle
+% alpha = alphas(abs(alphas - (3.51124 + 1.32672i)) < 0.01);   % single
+% alpha = alphas(abs(alphas - (1.89989 + 1.13403i)) < 0.01);   % triple
+% 
+% 
+
+alpha = alphas(abs(alphas - (3.005)) < 0.01);
+
+% F = @(U0) sqrt(3)*Proj(t)*Inc*U0;
+mult = length(alpha);
+alpha = alpha(1);
+% alpha  = alpha + 0.001;
+% [~,~,U2] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2 * Up*Um, 1, 'smallest');
+% 
+% alpha  = alpha - 0.001;
+
+% 
+[~,s,U] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2 * Up*Um, 3, 'smallest');
+disp(s)
+U = U(:,3);
+% U = U2;
+% U = U(:,3);
+
+norm(Proj(0)*U)
+norm(Proj(1)*U)
+norm(Proj(2)*U)
+
+t = 2;
+
+U = Proj(t)*U;
+U= U / norm(U);
+
+% V = Proj(t)*V;
+% V= V / norm(V);
+
+[z,u] = F2X3(U,0,300,e1,e2, 'nophase');
+[~,du] = F2X3(2*Dbar(N,0,f1,f2)*U,0,300,e1,e2, 'nophase');
+phase = exp(1i*angle(u(10,10)));
+u = u./ phase;
+du = du ./ phase;
+% 
+% [z,v] = F2X3(V,0,300,e1,e2, 'nophase');
+% [~,dv] = F2X3(2*Dbar(N,0,f1,f2)*V,0,300,e1,e2, 'nophase');
+
+figure
+tl=tiledlayout(2,2,'TileSpacing','compact');
+minlevel=-5;
+levels=linspace(minlevel,2,60);
+
+title(tl, ['Multiplicity $' sprintf('%.0f%', mult) '$ ($\alpha = ' sprintf('%.2f', real(alpha)) ' + ' sprintf('%.2f', imag(alpha)) 'i$), rotation eigenspace $u(\omega z) = \omega^' sprintf('%.0f%', t) 'u(z)$'], 'Interpreter', 'latex')
+
+nexttile
+hold on
+title('$\log|u|$', 'Interpreter', 'latex')
+contourf(real(z), imag(z), max(log(abs(u)), -17), 30)
+hex(zS); axis equal; colorbar
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off
+
+
+nexttile; hold on
+title('arg($u$)', 'Interpreter', 'latex')
+surf(real(z), imag(z), angle(u), 'EdgeColor', 'none');
+clim([-pi,pi]); colormap(gca,wheelmap);
+hex(zS,10);
+view(2); axis equal;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+colorbar;
+
+
+
+
+nexttile
+hold on
+title('$\log|2D_{\bar z}u|$', 'Interpreter', 'latex')
+contourf(real(z), imag(z), max(log(abs(du)),-10), 30)
+hex(zS); axis equal; colorbar
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off
+
+
+nexttile; hold on
+title('arg($2D_{\bar z}u$)', 'Interpreter', 'latex')
+surf(real(z), imag(z), angle(du), 'EdgeColor', 'none');
+clim([-pi,pi]); colormap(gca,wheelmap);
+hex(zS,10);
+view(2); axis equal;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+colorbar;
+
+
+
+
+
+
+
+% 
+% nexttile
+% hold on
+% title('$\log|u_2|$', 'Interpreter', 'latex')
+% contourf(real(z), imag(z), max(log(abs(v)), -17), 30)
+% hex(zS); axis equal; colorbar
+% xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off
+% 
+% 
+% nexttile; hold on
+% title('arg($u_2$)', 'Interpreter', 'latex')
+% surf(real(z), imag(z), angle(v), 'EdgeColor', 'none');
+% clim([-pi,pi]); colormap(gca,wheelmap);
+% hex(zS,10);
+% view(2); axis equal;
+% xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+% colorbar;
+% 
+% nexttile
+% hold on
+% title('$\log|2D_{\bar z}u_2|$', 'Interpreter', 'latex')
+% contourf(real(z), imag(z), max(log(abs(dv)),-10), 30)
+% hex(zS); axis equal; colorbar
+% xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off
+% 
+% 
+% nexttile; hold on
+% title('arg($2D_{\bar z}u_2$)', 'Interpreter', 'latex')
+% surf(real(z), imag(z), angle(dv), 'EdgeColor', 'none');
+% clim([-pi,pi]); colormap(gca,wheelmap);
+% hex(zS,10);
+% view(2); axis equal;
+% xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+% colorbar;
+% % saveas(gcf,'./results/multiplicity_1_eigenfunction.png')
 
 
 %% Position representation of P(alpha)
 
 V = sym_potential(10,0,0) * sym_potential(10,0,0).' * const_fun(10);
 M=300;
-[z,v_pot] = K2X(V, 0, M, e1, e2);
+[z,v_pot] = F2X(V, 0, M, e1, e2);
 alpha = 10;
 
 P = 4*FE_Dbar(M, f1, f2)^2 - alpha^2 * Mult(v_pot(:), M);
@@ -196,8 +368,8 @@ colorbar
 % circshift position matrix might help numeric?
 
 M = 400;
-[z,up0] = K2X(sym_potential(10,0,0)*const_fun(10), -2*K, M, e1, e2);
-[~,um0] = K2X(sym_potential(10,0,0).'*const_fun(10), 2*K, M, e1, e2);
+[z,up0] = F2X(sym_potential(10,0,0)*const_fun(10), -2*K, M, e1, e2);
+[~,um0] = F2X(sym_potential(10,0,0).'*const_fun(10), 2*K, M, e1, e2);
 
 k=0;
 n = 1; % degree of line bundle we are tensoring with
@@ -262,7 +434,7 @@ colorbar
 
 %% Theta function
 M = 300;
-[z,up0] = K2X(const_fun(10), 0, M, e1, e2);
+[z,up0] = F2X(const_fun(10), 0, M, e1, e2);
 Th = theta1(z./e1, om);
 
 figure('WindowStyle', 'Docked');
@@ -278,13 +450,873 @@ clim([-pi,pi]); colormap(gca,wheelmap);
 hex(zS,10);
 view(2); axis equal;
 colorbar
-%%
-%%
-%% ASYMPTOTICS OF VECTOR BUNDLE ---------------
-%%
-%%
+
+%% ASYMPTOTICS OF VECTOR BUNDLE -------------------
+%% "IT LOOKS WKB"
+%% - log |u_K| / alpha as alpha grows
+
+vid=VideoWriter('.\results\log_norm_asymptotics_4.mp4','MPEG-4'); open(vid)
+fig=figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+alphas = 3:0.1:20;
+
+for id=1:length(alphas)
+    clf(fig);
+    tl=tiledlayout(2,2,'TileSpacing','compact');
+    title(tl, ['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex')
+
+    % Get protected state
+    [~,~,V] = svds(D + alphas(id)*U + K*speye(size(D)), 1, 'smallest');
+    [z,v1,~] = F2X4(V,K,300,e1,e2);
+
+    % Plot in hexagon
+    nexttile(1, [2 1]);
+    hold on
+    title('$\alpha^{-1} \log |u_K|$', 'Interpreter', 'latex')
+    minlevel=-1;
+    levels=linspace(minlevel,0.25,40);
+    contourf(real(z), imag(z), max(log(abs(v1)) ./ alphas(id), minlevel), levels)
+    hex(zS); axis equal; colorbar
+    xlim([-0.63,0.63]), ylim([-0.63,0.63]), clim([minlevel 0.25])
+
+    % Plot on two lines
+    MM = 600;
+    [~,v1,~] = F2X2(V,K,MM,e1,e2);
+    
+    nexttile;   
+    hold on
+    title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex')
+    plot((0:MM-1)'./MM, log(abs(diag(v1))) ./ alphas(id))
+    xlim([0 1]), ylim([-1 0.2])
+    xline(1/3), xline(2/3), yline(0, 'Color', 'red')
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+
+    nexttile;
+    hold on
+    title('restricted to line from $0$ to $\omega$', 'Interpreter', 'latex')
+    plot((MM-1:-1:0)'./MM, log(abs(v1(1,:))) ./ alphas(id))
+    xlim([0 1]), ylim([-1 1])
+    xline(1/2), yline(0, 'Color', 'red')
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+
+    drawnow
+    frame=getframe(fig);
+    writeVideo(vid,frame)
+end
+
+close(vid)
+
+
+%% - log |u|/alpha and log |2hDbar u / sqrt(V)|/alpha   as alpha grows
+
+vid=VideoWriter('.\results\log_norm_scalar_overlay_4.mp4','MPEG-4'); open(vid);
+fig=figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+V0 = Up * Um * const_fun(N);
+
+alphas = 10:0.1:20;
+
+for id=1:length(alphas)
+    clf(fig);
+    tl=tiledlayout(2,2,'TileSpacing','compact');
+    title(tl, ['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex');
+
+    [~,~,V] = svds((4*Dbar(N,0,f1,f2)^2 -alphas(id)^2 * Up*Um), 1, 'smallest');
+    hdbarV = 2*Dbar(N,0,f1,f2) * V ./ alphas(id);
+    [z,v] = F2X3(V,0,300,e1,e2);
+    [~,dv] = F2X3(hdbarV,0,300,e1,e2);
+    [~,v0] = F2X3(V0,0,300,e1,e2);
+    dv = dv ./ sqrt(v0);
+
+    nexttile(1);
+    hold on
+    title('$h\log |u_{0}|$, where $P(\alpha)u_0 = 0$', 'Interpreter', 'latex');
+    minlevel=-1;
+    levels=linspace(minlevel,0.5,40);
+    contourf(real(z), imag(z), max(log(abs(v)) ./ alphas(id), minlevel), levels);
+    hex(zS); axis equal; colorbar;
+    xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]); 
+
+    nexttile(3);
+    hold on
+    title('$h\log |2hD_{\bar z} u_{0} / \sqrt{V}|$', 'Interpreter', 'latex');
+    minlevel=-1;
+    levels=linspace(minlevel,0.5,40);
+    contourf(real(z), imag(z), max(log(abs(dv)) ./ alphas(id), minlevel), levels);
+    hex(zS); axis equal; colorbar;
+    xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]); 
+
+
+    MM = 600;
+    [~,v] = F2X(V,K,MM,e1,e2);
+    [~,dv] = F2X(hdbarV,0,MM,e1,e2);
+    [~,v0] = F2X(V0,0,MM,e1,e2);
+    dv = dv ./ sqrt(v0);
+    dv(201,201) = dv(202,202); dv(401,401)=dv(402,402);
+    
+    nexttile
+    hold on
+    title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex');
+    plot((0:MM-1)'./MM, log(abs(diag(v))) ./ alphas(id), 'Color', 'blue');
+    plot((0:MM-1)'./MM, log(abs(diag(dv))) ./ alphas(id), 'Color', 'red');
+    xlim([0 1])
+    ylim([-1 0.2])
+    xline(1/3); xline(2/3); yline(0, 'Color', 'black')
+    legend('h log u', 'h log (2hDbar u / sqrt V)')
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+    
+
+    nexttile
+    hold on
+    title('restricted to line from $0$ to $\omega$', 'Interpreter', 'latex');
+    plot((MM-1:-1:0)'./MM, log(abs(v(1,:))) ./ alphas(id), 'Color', 'blue');
+    plot((MM-1:-1:0)'./MM, log(abs(dv(1,:))) ./ alphas(id), 'Color', 'red');
+    xlim([0 1])
+    ylim([-1 1])
+    xline(1/2); yline(0, 'Color', 'black');
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+
+    drawnow;
+    frame=getframe(fig);
+    writeVideo(vid,frame);
+end
+
+close(vid);
+
+
+%% - fourier transform of u_K restricted to edge of hexagon
+
+vid=VideoWriter('.\results\edge_fourier_asymptotics_3.mp4','MPEG-4'); open(vid);
+fig=figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+alphas = 5:0.1:20;
+
+for id=1:length(alphas)
+
+    clf(fig);
+    tl=tiledlayout(1,2,'TileSpacing','compact');
+    title(tl, ['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex');
+
+    [~,~,V] = svds(D + alphas(id)*U + K*speye(size(D)), 1, 'smallest');
+    MM = 600; MM = 3*MM;
+    [~,v1,~] = F2X2(V,K,MM,e1,e2);
+    v0 = diag(v1); v0 = v0(MM: 2*MM-1);
+    v0 = v0 / norm(v0); v0 = v0 / sign(v0(1));
+    v0 = [v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0]; MM = 13*MM;
+
+    % fourier transform
+    V0 = fft(v0);
+    V0 = V0 * sqrt(alphas(id)/13);
+    V0 = circshift(V0, round(MM/2));
+
+    nexttile;   
+    hold on
+    title('protected state on line from $-\frac{\sqrt{3}i}{3}$ to $-\frac{2\sqrt{3}i}{3}$', 'Interpreter', 'latex');
+    plot((0:(MM/13)-1)' ./(MM/13) .*(2/sqrt(3)), v0(1:MM/13));
+    xlim([0 2/sqrt(3)]);
+    ylim([-3 3]);
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 1 1]; % [width, height, depth]
+
+
+    nexttile;
+    hold on
+    title('scaled fourier transform', 'Interpreter', 'latex');
+    xlabel('$\xi / \alpha$', 'Interpreter', 'latex');
+    plot(((0:MM-1)' - round(MM/2)) .* (2*pi*sqrt(3)/(13*2*alphas(id))), abs(V0));
+    xlim([-10 10]);
+    ylim([-10 20]);
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 1 1]; % [width, height, depth]
+
+    drawnow;
+    frame=getframe(fig);
+    writeVideo(vid,frame);
+end
+
+close(vid);
+
+%% - log |u_K| / alpha as potential varies
+
+vid=VideoWriter('.\results\log_norm_varying_potential_3.mp4','MPEG-4'); open(vid);
+fig=figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+Up2 = sym_potential(N,1,-1); Um2 = Up2.';
+U2 = [0*Up, Up2; Um2, 0*Up];
+
+alphas = @(id) 10;
+thetas = 0:0.002:1;
+theta = thetas * pi;
+
+for id=1:length(theta)
+    
+    clf(fig)
+    tl=tiledlayout(3,2,'TileSpacing','compact');
+    title(tl, ['$U = \cos\theta f_1 + \sin\theta f_{-2},\,\,\theta = ' ...
+        sprintf('%.3f', theta0(id)) '\pi$'], 'Interpreter', 'latex')
+    
+    % get protected state
+    [~,~,V] = svds(D + alphas(id)*(cos(theta(id))*U + sin(theta(id))*U2) + K*speye(size(D)), 1, 'smallest');
+    [z,v1,~] = F2X4(V,K,300,e1,e2);
+
+    % points where max is achieved
+    v1_max = max(abs(v1), [], 'all');
+    max_inds = find(abs(abs(v1) - v1_max) < 0.0001);
+    
+    % graph in hexagon
+    nexttile(1, [3 1])
+    hold on
+    title(['$\alpha^{-1} \log |u_K|,\quad\quad \alpha = '  sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex')
+    minlevel=-1;
+    levels=linspace(minlevel,0.25,40);
+    contourf(real(z), imag(z), max(log(abs(v1)) ./ alphas(id), minlevel), levels)
+    hex(zS); axis equal; colorbar
+    plot(real(z(max_inds)), imag(z(max_inds)), '.', 'color', 'red', 'MarkerSize', 10)
+    xlim([-0.63,0.63]), ylim([-0.63,0.63]), clim([minlevel 0.25])
+
+    % graph on two lines
+    MM = 600;
+    [~,v1,~] = F2X2(V,K,MM,e1,e2);
+    
+    nexttile;   
+    hold on
+    title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex')
+    plot((0:MM-1)'./MM, log(abs(diag(v1))) ./ alphas(id))
+    xlim([0 1]), ylim([-1 0.2])
+    xline(1/3), xline(2/3), yline(0, 'Color', 'red')
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+    
+    nexttile;
+    hold on
+    title('restricted to line from $0$ to $\omega$', 'Interpreter', 'latex')
+    plot((MM-1:-1:0)'./MM, log(abs(v1(1,:))) ./ alphas(id))
+    xlim([0 1]), ylim([-1 0.5]);
+    xline(1/2), yline(0, 'Color', 'red')
+    ax = gca; % Get current axes
+    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
+    
+    % graph magic angles
+    nexttile;
+    Alphas = save_angles(:, 1+10*(id-1));
+    
+    hold on
+    scattermult([real(Alphas), imag(Alphas)], 13)
+    xlim([-0.1 11]), ylim([-8 8]), yline(0)
+
+    drawnow;
+    frame=getframe(fig);
+    writeVideo(vid,frame)
+
+end
+
+close(vid)
+
+%% - does restriction of u_0 to edge of hexagon, approximately solve semiclassical ode?
+
+alpha = 20;
+
+[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2 * Up * Um, 1, 'smallest');
+[~,v] = F2X(V,0,300,e1,e2);
+phase = exp(1i*angle(v(1,1)));
+V = V ./ phase;
+
+Pot = Up*Um*const_fun(N);
+DxV = Dx(N,0,f1,f2) * V;
+DyV = Dy(N,0,f1,f2) * V;
+
+DxxV = Dx(N,0,f1,f2) * DxV;
+DxyV = Dy(N,0,f1,f2) * DxV;
+DyyV = Dy(N,0,f1,f2) * DyV;
+
+
+MM = 500;
+[~,v] = F2X(V,0,3*MM,e1,e2);
+[~,dxv] = F2X(DxV,0,3*MM,e1,e2);
+[~,dyv] = F2X(DyV,0,3*MM,e1,e2);
+[~,dxxv] = F2X(DxxV,0,3*MM,e1,e2);
+[~,dxyv] = F2X(DxyV,0,3*MM,e1,e2);
+[~,dyyv] = F2X(DyyV,0,3*MM,e1,e2);
+[~,pot] = F2X(Pot,0,3*MM,e1,e2);
+
+
+v = diag(v); dxv = diag(dxv).* (2 / alpha); dyv = diag(dyv).* (2 / alpha);
+dxxv = diag(dxxv).* (2 / alpha)^2; dyyv = diag(dyyv).* (2 / alpha)^2; 
+dxyv = diag(dxyv).* (2 / alpha)^2; pot = diag(pot);
+
+%1 v      real
+%2 Dxv    real   (Dx = -i dx)
+%3 Dyv    imag
+%4 DxDxv   real
+%5 DyDyv   real
+%6 DxDyv   imag
+A = [real(v), real(dxv), imag(dyv), real(dxxv), real(dyyv), imag(dxyv), pot].';
+names = ["u", "dxu", "dyu", "dxxu", "dyyu", "dxyu", "potential V"];
+
+mm = 20;
+A = A(:,MM+1+mm:2*MM-mm);
+
+% B = normalize(A,2, "norm");
+% ind = [1 2 4];
+% [c,s,~] = svd(B(ind,:), "econ");
+% 
+% disp(names(ind))
+% disp("singular values")
+% disp(s)
+% disp("coefficients")
+% disp(c)
+% 
+% 
+% figure
+% hold on
+% plot((mm:M-1-mm)'./M, abs(B(ind,:)))
+% yline(0)
+% xlim([0 1])
+% legend(names(ind))
+
+figure
+hold on
+title("$V$ vs second derivatives of $u$  on vertical edge of hexagon", 'Interpreter', 'Latex')
+plot((mm:MM-1-mm)'./MM, A(4,:) ./ A(1,:))
+plot((mm:MM-1-mm)'./MM, A(5,:) ./ A(1,:))
+plot((mm:MM-1-mm)'./MM, A(6,:) ./ A(1,:))
+plot((mm:MM-1-mm)'./MM, real(A(7,:)))
+ylim([-100, 100])
+legend(["$(4h^2 \partial_x^2 u) / u$", "$(4h^2 \partial_y^2 u) / u$", "$\Im (4h^2 \partial_x\partial_y u) / u$", "V"], 'Interpreter', 'Latex')
+
+
+% disp( (imag(dyv)' * dxv) / (norm(dxv) * norm(dyv)) )
+% disp( -norm(dxv) / norm(dyv) )
+
+
+
+%% - ... calculate c (coefficient in ode) for some values of alpha
+
+alphas=5:0.1:20;
+xx_yy = alphas * 0;
+xx_xy = alphas * 0;
+x_y = alphas * 0;
+
+for id=1:length(alphas)
+alpha = alphas(id);
+
+
+
+[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2 * Up * Um, 1, 'smallest');
+[~,v] = F2X(V,0,300,e1,e2);
+phase = exp(1i*angle(v(1,1)));
+V = V ./ phase;
+
+Pot = Up*Um*const_fun(N);
+DxV = Dx(N,0,f1,f2) * V;
+DyV = Dy(N,0,f1,f2) * V;
+
+DxxV = Dx(N,0,f1,f2) * DxV;
+DxyV = Dy(N,0,f1,f2) * DxV;
+DyyV = Dy(N,0,f1,f2) * DyV;
+
+
+MM = 500;
+[~,v] = F2X(V,0,3*MM,e1,e2);
+[~,dxv] = F2X(DxV,0,3*MM,e1,e2);
+[~,dyv] = F2X(DyV,0,3*MM,e1,e2);
+[~,dxxv] = F2X(DxxV,0,3*MM,e1,e2);
+[~,dxyv] = F2X(DxyV,0,3*MM,e1,e2);
+[~,dyyv] = F2X(DyyV,0,3*MM,e1,e2);
+[~,pot] = F2X(Pot,0,3*MM,e1,e2);
+
+
+v = diag(v); dxv = diag(dxv).* (2 / alpha); dyv = diag(dyv).* (2 / alpha);
+dxxv = diag(dxxv).* (2 / alpha)^2; dyyv = diag(dyyv).* (2 / alpha)^2; 
+dxyv = diag(dxyv).* (2 / alpha)^2; pot = diag(pot);
+
+
+A = [real(v), real(dxv), imag(dyv), real(dxxv), real(dyyv), imag(dxyv), pot].';
+names = ["u", "dxu", "dyu", "dxxu", "dyyu", "dxyu", "potential V"];
+
+mm = 20;
+A = A(:,MM+1+mm:2*MM-mm);
+
+
+
+ind = [2 3];
+[c,~,~] = svd(A(ind,:), "econ");
+x_y(id) = c(3)/c(4);
+
+ind = [4 5];
+[c,~,~] = svd(A(ind,:), "econ");
+xx_yy(id) = c(3)/c(4);
+
+ind = [4 6];
+[c,~,~] = svd(A(ind,:), "econ");
+xx_xy(id) = c(3)/c(4);
+
+end
+
+figure
+hold on
+plot(alphas, xx_yy)
+plot(alphas, xx_xy)
+plot(alphas, x_y)
+legend(["$\sqrt{\partial_{yy} u / \partial_{xx} u}$",...
+        "$(Im \partial_{xy} u) / \partial_{xx} u$", "$\partial_y u / Im(\partial_x u)$"],...
+       'Interpreter', 'Latex')
+
+
+% Logarithmic derivative of protected state u
+
+% V(x)
+
+alpha = 10;
+[~,~,V] = svds(D + alpha*U + K*speye(size(D)), 1, 'smallest');
+V = V(1:length(V)/2); V = V / norm(V);
+[z,v] = F2X(V,K,300,e1,e2);
+
+
+rad = 20;
+chi = ones(rad,rad); chi(300,300) = 0; %chi=circshift(chi, [-rad/2, -rad/2]);
+v_conv =  ifft2(fft2(abs(v)) .* fft2(chi)) ./ rad^2;
+v_conv = v_conv .* exp(1i*angle(v));
+
+V_conv =X2F(v_conv,0,N,e1,e2);
+[~,Dbar_v_conv]=F2X(Dbar(N,0,f1,f2) * V_conv, 0, 300, e1,e2);
+
+vv = (Dbar_v_conv ./ v_conv) .^ 2;
+
+figure
+til=tiledlayout(1,4,'TileSpacing','compact');
+
+
+% nexttile;
+% hold on
+% title('$\chi$ where $\int \chi = 1$', 'Interpreter', 'latex');
+% contourf(real(z), imag(z), -chi ./ 2, levels);
+% axis equal; clim([minlevel 0.25]); 
+
+
+nexttile;
+hold on
+contourf(real(z), imag(z), max(min(real(vv), 40000), -40000), 32);
+axis equal
+colorbar
+
+nexttile;
+hold on
+contourf(real(z), imag(z), max(log(abs(v)), -20), 32);
+axis equal; colorbar;
+
+%% - logarithmic derivative of u_K 
+
+% We have energy surface
+
+MM = 300;
+
+V = Up*Um*const_fun(N);
+[z,v] = F2X3(V,0,MM,e1,e2, 'nophase');
+
+v = sqrt(v);
+% v= 1i*v;
+
+% Which piece of it is it?
+
+alpha = 13;
+[~,~,U] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
+[~,u] = F2X3(U,0,MM,e1,e2, 'nophase');
+[~,du] = F2X3(2*Dbar(N,0,f1,f2)*U,0,MM,e1,e2, 'nophase');
+
+
+
+% diff = (du./u)/alpha;
+% for ii=1:size(v, 1)
+%     for jj=1:size(v,2)
+%         % diff(ii,jj)
+%         if imag(z(ii,jj)) >= 0
+%             v(ii,jj) = -v(ii,jj);
+%         end
+%     end
+% end
+
+figure
+tl=tiledlayout(2,3,'TileSpacing', 'compact');
+
+title(tl, ['$u \in ker_{L^2(\bf{C}/\Lambda; \bf{C})}((2D_{\bar{z}})^2 - \alpha^2 V)$,    $\alpha = ' sprintf('%.1f', alpha) '$'], 'Interpreter', 'latex')
+
+nexttile
+hold on
+title('$arg(V)$', 'Interpreter', 'latex');
+surf(real(z), imag(z), angle(v), 'EdgeColor', 'none');
+clim([-pi,pi]); colormap(gca,wheelmap);
+view(2); axis equal;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+colorbar
+
+nexttile
+hold on
+title('$|V|$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), min(abs(v), 10), 32);
+axis equal;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+colorbar
+
+
+nexttile
+hold on
+title('$|V - \alpha^{-1}2D_{\bar z}u / u|$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), min(abs(v - (du./u)/alpha), 0.5), 32);
+axis equal;
+hex(zS)
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+colorbar
+
+
+nexttile
+hold on
+title('$arg(2D_{\bar z}u / u)$', 'Interpreter', 'latex');
+surf(real(z), imag(z), angle(du ./ u), 'EdgeColor', 'none');
+clim([-pi,pi]); colormap(gca,wheelmap);
+view(2); axis equal;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+colorbar
+
+nexttile
+hold on
+title('$|\alpha^{-1}2D_{\bar z}u / u|$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), min(abs(du ./ u)/alpha, 10), 32);
+axis equal;
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
+colorbar
+
+%% ATTEMPT TO GET A PHASE FUNCTION
+%% - finite element for a hexagon dirichlet problem, Laplacian phi = {q,bar q}/|xi|^2
+model = createpde;
+
+rho = exp(1i*pi/3);
+hex_z = zS * rho.^(0:5);
+g = decsg([2 6 real(hex_z) imag(hex_z)]');
+geometryFromEdges(model,g);
+
+applyBoundaryCondition(model,"dirichlet", ...
+                       "Edge",1:model.Geometry.NumEdges, ...
+                       "u",0);
+
+% f= {q, bar q} / |xi|^2
+V = const_fun(N);
+V = Up*Um*V;
+
+dzV = 1i* Dbar(N,0,f1,f2)' * V;
+
+MM=1000;
+[~,v] = F2X(V,0,MM,e1,e2);
+[~,dzv] = F2X(dzV,0,MM,e1,e2);
+bracket = imag( sqrt(conj(v)) .* dzv );
+f = abs(bracket) ./ abs(v);
+f(1,1) = f(2,1); % lol
+
+% % sanity checks
+% figure
+% hold on
+% surf(real(z),imag(z),abs(bracket) ./ 1500, 'EdgeColor', 'none')
+% view(2); axis equal; colorbar;
+% figure 
+% hold on
+% contourf(real(z),imag(z),f, 18)
+% view(2); axis equal; colorbar;
+
+
+ffun = @(z,etc) interpolate(e1,e2,f,MM,z.x,z.y);
+specifyCoefficients(model, "m",0,"d",0,"c",1,"a",0,"f",ffun);
+
+generateMesh(model,"Hmax",0.01);
+result=solvepde(model);
+
+figure
+hold on
+pdeplot(result.Mesh, XYData=result.NodalSolution, Contour="on", ColorMap="default", Levels=18); 
+axis equal
+title("$\Phi$", 'Interpreter', 'latex')
+% saveas(gcf,'./Phi_solution.png')
+
+%% - log eigenfunction / alpha   smoothened, then take laplacian
+
+alpha = 20;
+[~,~,V] = svds(D + alpha*U + K*speye(size(D)), 1, 'smallest');
+V = V(1:length(V)/2); V = V / norm(V);
+[z,v] = F2X(V,K,300,e1,e2);
+
+
+rad = 8;
+chi = ones(rad,rad); chi(300,300) = 0; %chi=circshift(chi, [-rad/2, -rad/2]);
+v_conv =  ifft2(fft2(abs(v)) .* fft2(chi)) ./ rad^2;
+v_conv = log(abs(v_conv)) ./ alpha;
+% v_conv = max(log(abs(v)) ./ alpha, -0.5);
+
+V_conv =X2F(v_conv,0,N,e1,e2);
+[~,Lap_v_conv]=F2X(Dbar(N,0,f1,f2) * Dbar(N,0,f1,f2)' * V_conv, 0, 300, e1,e2);
+
+
+
+figure
+tiledlayout(1,4,'TileSpacing','compact');
+
+minlevel=-1;
+levels=linspace(minlevel,0.25,40);
+
+nexttile;
+hold on
+title('$\chi$ where $\int \chi = 1$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), -chi ./ 2, levels);
+axis equal; clim([minlevel 0.25]); 
+
+
+nexttile;
+hold on
+title('$\alpha^{-1} \log |u_K|$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), max(log(abs(v)) ./ alpha, minlevel), levels);
+clim([minlevel 0.25]); axis equal;
+
+nexttile;
+hold on
+title('$\alpha^{-1} \log (|u_K| \ast \chi)$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), max(v_conv, minlevel), levels);
+axis equal; clim([minlevel 0.25]); colorbar;
+
+% nexttile;
+% hold on
+% title('$\Delta(\alpha^{-1} \log (|u_K| \ast \chi))$', 'Interpreter', 'latex');
+% surf(real(z), imag(z), real(Lap_v_conv),'EdgeColor', 'None');
+% axis equal; 
+% view(2);
+% % hex(zS); axis equal; colorbar;
+% ylim([-1.721,0]), xlim([-0.5,0.5]); 
+%  colorbar;
+
+nexttile;
+hold on
+title('max$(-3,\Delta(\alpha^{-1} \log (|u_K| \ast \chi)) )$', 'Interpreter', 'latex');
+contourf(real(z), imag(z), min(max(real(Lap_v_conv),-3), 18),15);
+axis equal; 
+view(2);
+% hex(zS); axis equal; colorbar;
+ylim([-1.721,0]), xlim([-0.5,0.5]); 
+ colorbar;
+
+% saveas(gcf,'./results/Laplacian_of_phi_1.png')
+%% - phase function branch cut WKB (from AM's Phys Rev Letter paper on WKB)
+
+MM = 300;
+
+% Get scalar potential as a position space vector:
+V = Up*Um*const_fun(N);
+[z,v] = F2X(V,0,MM,e1,e2);
+
+
+% Take square root
+% Matlab sqrt returns number with  -pi <= arg <= pi
+v = sqrt(-v);
+v = 1i*v;
+
+figure
+hold on
+contourf(real(z), imag(z), real(v), 32)
+hex(zS)
+axis equal
+colorbar
+
+figure
+hold on
+contourf(real(z), imag(z), imag(v), 32)
+hex(zS)
+axis equal
+colorbar
+
+
+% Take fourier transform
+A = X2F(v,0,N,e1,e2); 
+
+% Invert Dbar
+Db = Dbar(N,0,f1,f2);
+ww = sparse(2*N+1, 2*N+1); ww(N+1,N+1) = 1;
+DD = 2i*Db + kron(ww, ww);
+
+% 
+A = Inv(DD) * A;
+a0 = A(N*(2*N+1) + N+1) * sqrt(sqrt(3)/2);
+A(N*(2*N+1) + N+1) = 0;
+
+
+% transform back to position basis
+[z,psi] = F2X(A,0,MM,e1,e2);
+psi = psi + 0.5*(a0'*z+a0*conj(z));
+
+figure
+hold on
+contourf(real(z), imag(z), real(psi), 32)
+hex(zS)
+axis equal
+colorbar
+
+figure
+hold on
+contourf(real(z), imag(z), imag(psi), 32)
+hex(zS)
+axis equal
+colorbar
+
+% Get 2 wkb solutions
+[~,vv] = F2X(Up*Um*const_fun(N),0,MM,e1,e2); % potential v
+vv = vv .^ (-0.25);
+% vv(imag(z) > 0) = -1i*vv(imag(z)>0);
+
+
+alpha = 15;
+v1 = exp(1i*psi*alpha) .* vv;
+v2 = exp(-1i*psi*alpha) .* vv;
+
+%% - ... wronskian with actual solution near edges
+
+% V1 = X2K(v1, 0, N, e1, e2);
+% V2 = X2K(v2, 0, N, e1, e2);
+
+
+% protected state
+[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
+[~,v_temp] = F2X(V,0,300,e1,e2);
+V = V / exp(1i*angle(v_temp(1,1)));
+
+
+
+% set of z to calculate for
+step = 0.003;
+[xx, yy] = meshgrid(-0.05:step:0.05, sqrt(3)/3-0.03:step:2*sqrt(3)/3+0.03);
+z = xx + 1i*yy;
+
+
+% psi = compute_psi(z);
+
+% figure
+% hold on
+% contourf(real(z), imag(z), real(psi), 100);
+% hex(zS)
+% axis equal
+
+aa = F2Vect(A,z,f1,f2,32);
+vv = F2Vect(Up*Um*const_fun(N),z,f1,f2,32);
+vv = vv .^ -0.25;
+
+u = F2Vect(V,z,f1,f2,32);
+du = F2Vect(Dbar(N,0,f1,f2) * V,z,f1,f2,32);
+u1 = exp(1i*aa*alpha) .* vv;
+u2 = exp(-1i*aa*alpha) .* vv;
+du1 = 0.5*(u1 - circshift(u1, [0 1]) + 1i* (u1 - circshift(u1, [1 0])) ) ./step;
+du2 = 0.5*(u2 - circshift(u2, [0 1]) + 1i* (u2 - circshift(u2, [1 0])) ) ./step;
+
+z = z(2:end, 2:end);
+u = u(2:end, 2:end);
+u1 = u1(2:end, 2:end);
+u2 = u2(2:end, 2:end);
+du = du(2:end, 2:end);
+du1 = du1(2:end, 2:end);
+du2 = du2(2:end, 2:end);
+vv = vv(2:end, 2:end);
+
+
+% u1 = K2Vect(V1,z,f1,f2,32);
+% du1 = K2Vect(Dbar(N,0,f1,f2) * V1,z,f1,f2,32);
+% u2 = K2Vect(V2,z,f1,f2,32);
+% du2 = K2Vect(Dbar(N,0,f1,f2) * V2,z,f1,f2,32);
+
+
+% wronskians
+w1 = du1.*u - u1.*du ;
+w2 = du2.*u - u2.*du ;
+w3 = du2.*u1 - du1.*u2;
+
+w1 = w1 ./ w3; w2 = w2 ./ w3;
+
+
+figure
+hold on
+contourf(real(z), imag(z), min(max(imag(w1), -num), num), 100)
+xline(0)
+plot(0,2*sqrt(3)/3,'o')
+plot(0,sqrt(3)/3,'o')
+colorbar
+axis equal
+
+%% - ... compare actual solution and wkb on edge
+
+alpha =15;
+xx = (sqrt(3)/3:0.002:2*sqrt(3)/3) * 1i;
+aa = F2Vect(A,xx,f1,f2,32);
+aa = aa + 0.5*(a0'*xx+a0*conj(xx));
+vv = F2Vect(Up*Um*const_fun(N),xx,f1,f2,32);
+
+u2 = cos(alpha * aa) .* (vv .^ -0.25);
+u2 = min(u2, 1);
+u2 = u2 / max(u2);
+
+uu = F2Vect(V, xx, f1, f2, 32);
+uu = uu / max(uu);
+
+
+% plot
+figure
+hold on
+plot(imag(xx), u2);
+plot(imag(xx), uu);
+
+
+xline(sqrt(3)/3)
+xline(2*sqrt(3)/3)
+yline(0)
+
+
+%% - ... comparison of exponential growth rate near edge
+
+
+alpha = 15;
+
+
+% actual solution
+[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
+fig=figure;
+vid=VideoWriter('.\results\physics_growth_comparison_2.mp4','MPEG-4'); open(vid)
+% set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+for s=-0.5*sqrt(3)*1/2:0.005:0.5*sqrt(3)*1/2
+x = (-0.5:0.01:0.5) + sqrt(3)*1i/2 + 1i*s;
+
+%
+v = F2Vect(V,x,f1,f2,N);
+psi = F2Vect(A,x,f1,f2,N);
+psi = imag(psi);
+
+clf(fig)
+hold on
+title("$\psi$ and $\log|u|$ for $\alpha = 15$", 'Interpreter', 'latex')
+plot(x, log(abs(v)) / alpha)
+plot(x, psi);
+plot(x, -psi);
+
+drawnow
+frame=getframe(fig);
+writeVideo(vid, frame)
+
+end
+
+close(vid)
+
+
 %% ASYMPTOTICS NEAR \pm z_S
-%% Comparison with Airy function in w coordinates
+%% - comparison with Airy function in w coordinates
 
 % prologue -------------
 
@@ -316,7 +1348,7 @@ z = zS + A * w;
 % Get protected state
 M=4000;
 [~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - (alpha)^2*Up*Um, 1, 'smallest');
-[~,v] = K2X(V,0,M,e1,e2);
+[~,v] = F2X(V,0,M,e1,e2);
 
 
 apply = @(f) arrayfun(@(z) interpolate(e1,e2,f,M,real(z),imag(z)), z);
@@ -326,7 +1358,7 @@ phase = exp(1i*angle(interpolate(e1,e2,v,M,real(zS), imag(zS) ) ) );
 v = apply(v);
 
 
-[~,dv] = K2X(1i*Dbar(N,0,f1,f2)*V, 0,M,e1,e2);
+[~,dv] = F2X(1i*Dbar(N,0,f1,f2)*V, 0,M,e1,e2);
 dv = apply(A*dv);
 
 dv = dv ./ phase;v = v ./ phase; 
@@ -431,7 +1463,7 @@ close(vid)
 % ----------------------
 
 
-%% for some set of alpha, compute g_0(0) and g_0(2) from wronskian with Airy function
+%% - for some set of alpha, compute g_0(0) and g_0(2) from wronskian with Airy function
 
 
 % prologue -------------
@@ -459,8 +1491,8 @@ z = zS + A * w;
 % Get protected state
 M=400;
 [~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
-[~,v] = K2X(V,0,M,e1,e2);
-[~,dv] = K2X(1i*Dbar(N,0,f1,f2)*V, 0,M,e1,e2);
+[~,v] = F2X(V,0,M,e1,e2);
+[~,dv] = F2X(1i*Dbar(N,0,f1,f2)*V, 0,M,e1,e2);
 phase = exp(1i*angle(v(1,1)));
 dv = dv ./ phase;v = v ./ phase;
 
@@ -583,878 +1615,343 @@ end
 
 
 %
-%%
-%%
-%% "IT LOOKS WKB"
-%% log |u_K| / alpha as alpha grows
 
-vid=VideoWriter('.\results\log_norm_asymptotics_4.mp4','MPEG-4'); open(vid)
-fig=figure;
-set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
-
-alphas = 3:0.1:20;
-
-for id=1:length(alphas)
-    clf(fig);
-    tl=tiledlayout(2,2,'TileSpacing','compact');
-    title(tl, ['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex')
-
-    % Get protected state
-    [~,~,V] = svds(D + alphas(id)*U + K*speye(size(D)), 1, 'smallest');
-    [z,v1,~] = K2X4(V,K,300,e1,e2);
-
-    % Plot in hexagon
-    nexttile(1, [2 1]);
-    hold on
-    title('$\alpha^{-1} \log |u_K|$', 'Interpreter', 'latex')
-    minlevel=-1;
-    levels=linspace(minlevel,0.25,40);
-    contourf(real(z), imag(z), max(log(abs(v1)) ./ alphas(id), minlevel), levels)
-    hex(zS); axis equal; colorbar
-    xlim([-0.63,0.63]), ylim([-0.63,0.63]), clim([minlevel 0.25])
-
-    % Plot on two lines
-    M = 600;
-    [~,v1,~] = K2X2(V,K,M,e1,e2);
-    
-    nexttile;   
-    hold on
-    title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex')
-    plot((0:M-1)'./M, log(abs(diag(v1))) ./ alphas(id))
-    xlim([0 1]), ylim([-1 0.2])
-    xline(1/3), xline(2/3), yline(0, 'Color', 'red')
-    ax = gca; % Get current axes
-    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
-
-    nexttile;
-    hold on
-    title('restricted to line from $0$ to $\omega$', 'Interpreter', 'latex')
-    plot((M-1:-1:0)'./M, log(abs(v1(1,:))) ./ alphas(id))
-    xlim([0 1]), ylim([-1 1])
-    xline(1/2), yline(0, 'Color', 'red')
-    ax = gca; % Get current axes
-    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
-
-    drawnow
-    frame=getframe(fig);
-    writeVideo(vid,frame)
-end
-
-close(vid)
+%% WKB FOR ODE
+%% - V(x) = e^{2pi i x} 
 
 
-%% log |u|/alpha and log |2hDbar u / sqrt(V)|/alpha   as alpha grows
-
-vid=VideoWriter('.\results\log_norm_scalar_overlay_4.mp4','MPEG-4'); open(vid);
-fig=figure;
-set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
-
-V0 = Up * Um * const_fun(N);
-
-alphas = 10:0.1:20;
-
-for id=1:length(alphas)
-    clf(fig);
-    tl=tiledlayout(2,2,'TileSpacing','compact');
-    title(tl, ['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex');
-
-    [~,~,V] = svds((4*Dbar(N,0,f1,f2)^2 -alphas(id)^2 * Up*Um), 1, 'smallest');
-    hdbarV = 2*Dbar(N,0,f1,f2) * V ./ alphas(id);
-    [z,v] = K2X3(V,0,300,e1,e2);
-    [~,dv] = K2X3(hdbarV,0,300,e1,e2);
-    [~,v0] = K2X3(V0,0,300,e1,e2);
-    dv = dv ./ sqrt(v0);
-
-    nexttile(1);
-    hold on
-    title('$h\log |u_{0}|$, where $P(\alpha)u_0 = 0$', 'Interpreter', 'latex');
-    minlevel=-1;
-    levels=linspace(minlevel,0.5,40);
-    contourf(real(z), imag(z), max(log(abs(v)) ./ alphas(id), minlevel), levels);
-    hex(zS); axis equal; colorbar;
-    xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]); 
-
-    nexttile(3);
-    hold on
-    title('$h\log |2hD_{\bar z} u_{0} / \sqrt{V}|$', 'Interpreter', 'latex');
-    minlevel=-1;
-    levels=linspace(minlevel,0.5,40);
-    contourf(real(z), imag(z), max(log(abs(dv)) ./ alphas(id), minlevel), levels);
-    hex(zS); axis equal; colorbar;
-    xlim([-0.63,0.63]), ylim([-0.63,0.63]); clim([minlevel 0.25]); 
-
-
-    M = 600;
-    [~,v] = K2X(V,K,M,e1,e2);
-    [~,dv] = K2X(hdbarV,0,M,e1,e2);
-    [~,v0] = K2X(V0,0,M,e1,e2);
-    dv = dv ./ sqrt(v0);
-    dv(201,201) = dv(202,202); dv(401,401)=dv(402,402);
-    
-    nexttile
-    hold on
-    title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex');
-    plot((0:M-1)'./M, log(abs(diag(v))) ./ alphas(id), 'Color', 'blue');
-    plot((0:M-1)'./M, log(abs(diag(dv))) ./ alphas(id), 'Color', 'red');
-    xlim([0 1])
-    ylim([-1 0.2])
-    xline(1/3); xline(2/3); yline(0, 'Color', 'black')
-    legend('h log u', 'h log (2hDbar u / sqrt V)')
-    ax = gca; % Get current axes
-    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
-    
-
-    nexttile
-    hold on
-    title('restricted to line from $0$ to $\omega$', 'Interpreter', 'latex');
-    plot((M-1:-1:0)'./M, log(abs(v(1,:))) ./ alphas(id), 'Color', 'blue');
-    plot((M-1:-1:0)'./M, log(abs(dv(1,:))) ./ alphas(id), 'Color', 'red');
-    xlim([0 1])
-    ylim([-1 1])
-    xline(1/2); yline(0, 'Color', 'black');
-    ax = gca; % Get current axes
-    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
-
-    drawnow;
-    frame=getframe(fig);
-    writeVideo(vid,frame);
-end
-
-close(vid);
-
-
-%% fourier transform of u_K restricted to edge of hexagon
-
-vid=VideoWriter('.\results\edge_fourier_asymptotics_3.mp4','MPEG-4'); open(vid);
-fig=figure;
-set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
-
-alphas = 5:0.1:20;
-
-for id=1:length(alphas)
-
-    clf(fig);
-    tl=tiledlayout(1,2,'TileSpacing','compact');
-    title(tl, ['$\alpha = ' sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex');
-
-    [~,~,V] = svds(D + alphas(id)*U + K*speye(size(D)), 1, 'smallest');
-    MM = 600; M = 3*MM;
-    [~,v1,~] = K2X2(V,K,M,e1,e2);
-    v0 = diag(v1); v0 = v0(MM: 2*MM-1);
-    v0 = v0 / norm(v0); v0 = v0 / sign(v0(1));
-    v0 = [v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0; 0*v0]; MM = 13*MM;
-
-    % fourier transform
-    V0 = fft(v0);
-    V0 = V0 * sqrt(alphas(id)/13);
-    V0 = circshift(V0, round(MM/2));
-
-    nexttile;   
-    hold on
-    title('protected state on line from $-\frac{\sqrt{3}i}{3}$ to $-\frac{2\sqrt{3}i}{3}$', 'Interpreter', 'latex');
-    plot((0:(MM/13)-1)' ./(MM/13) .*(2/sqrt(3)), v0(1:MM/13));
-    xlim([0 2/sqrt(3)]);
-    ylim([-3 3]);
-    ax = gca; % Get current axes
-    ax.PlotBoxAspectRatio = [1 1 1]; % [width, height, depth]
-
-
-    nexttile;
-    hold on
-    title('scaled fourier transform', 'Interpreter', 'latex');
-    xlabel('$\xi / \alpha$', 'Interpreter', 'latex');
-    plot(((0:MM-1)' - round(MM/2)) .* (2*pi*sqrt(3)/(13*2*alphas(id))), abs(V0));
-    xlim([-10 10]);
-    ylim([-10 20]);
-    ax = gca; % Get current axes
-    ax.PlotBoxAspectRatio = [1 1 1]; % [width, height, depth]
-
-    drawnow;
-    frame=getframe(fig);
-    writeVideo(vid,frame);
-end
-
-close(vid);
-
-%% log |u_K| / alpha as potential varies
-
-vid=VideoWriter('.\results\log_norm_varying_potential_3.mp4','MPEG-4'); open(vid);
-fig=figure;
-set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
-
-Up2 = sym_potential(N,1,-1); Um2 = Up2.';
-U2 = [0*Up, Up2; Um2, 0*Up];
-
-alphas = @(id) 10;
-thetas = 0:0.002:1;
-theta = thetas * pi;
-
-for id=1:length(theta)
-    
-    clf(fig)
-    tl=tiledlayout(3,2,'TileSpacing','compact');
-    title(tl, ['$U = \cos\theta f_1 + \sin\theta f_{-2},\,\,\theta = ' ...
-        sprintf('%.3f', theta0(id)) '\pi$'], 'Interpreter', 'latex')
-    
-    % get protected state
-    [~,~,V] = svds(D + alphas(id)*(cos(theta(id))*U + sin(theta(id))*U2) + K*speye(size(D)), 1, 'smallest');
-    [z,v1,~] = K2X4(V,K,300,e1,e2);
-
-    % points where max is achieved
-    v1_max = max(abs(v1), [], 'all');
-    max_inds = find(abs(abs(v1) - v1_max) < 0.0001);
-    
-    % graph in hexagon
-    nexttile(1, [3 1])
-    hold on
-    title(['$\alpha^{-1} \log |u_K|,\quad\quad \alpha = '  sprintf('%.1f', alphas(id)) '$'], 'Interpreter', 'latex')
-    minlevel=-1;
-    levels=linspace(minlevel,0.25,40);
-    contourf(real(z), imag(z), max(log(abs(v1)) ./ alphas(id), minlevel), levels)
-    hex(zS); axis equal; colorbar
-    plot(real(z(max_inds)), imag(z(max_inds)), '.', 'color', 'red', 'MarkerSize', 10)
-    xlim([-0.63,0.63]), ylim([-0.63,0.63]), clim([minlevel 0.25])
-
-    % graph on two lines
-    M = 600;
-    [~,v1,~] = K2X2(V,K,M,e1,e2);
-    
-    nexttile;   
-    hold on
-    title('restricted to line from $0$ to $-\sqrt 3 i$', 'Interpreter', 'latex')
-    plot((0:M-1)'./M, log(abs(diag(v1))) ./ alphas(id))
-    xlim([0 1]), ylim([-1 0.2])
-    xline(1/3), xline(2/3), yline(0, 'Color', 'red')
-    ax = gca; % Get current axes
-    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
-    
-    nexttile;
-    hold on
-    title('restricted to line from $0$ to $\omega$', 'Interpreter', 'latex')
-    plot((M-1:-1:0)'./M, log(abs(v1(1,:))) ./ alphas(id))
-    xlim([0 1]), ylim([-1 0.5]);
-    xline(1/2), yline(0, 'Color', 'red')
-    ax = gca; % Get current axes
-    ax.PlotBoxAspectRatio = [1 0.5 1]; % [width, height, depth]
-    
-    % graph magic angles
-    nexttile;
-    Alphas = save_angles(:, 1+10*(id-1));
-    
-    hold on
-    scattermult([real(Alphas), imag(Alphas)], 13)
-    xlim([-0.1 11]), ylim([-8 8]), yline(0)
-
-    drawnow;
-    frame=getframe(fig);
-    writeVideo(vid,frame)
-
-end
-
-close(vid)
-
-%% Does restriction of u_0 to edge of hexagon, approximately solve semiclassical ode?
-
-alpha = 20;
-
-[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2 * Up * Um, 1, 'smallest');
-[~,v] = K2X(V,0,300,e1,e2);
-phase = exp(1i*angle(v(1,1)));
-V = V ./ phase;
-
-Pot = Up*Um*const_fun(N);
-DxV = Dx(N,0,f1,f2) * V;
-DyV = Dy(N,0,f1,f2) * V;
-
-DxxV = Dx(N,0,f1,f2) * DxV;
-DxyV = Dy(N,0,f1,f2) * DxV;
-DyyV = Dy(N,0,f1,f2) * DyV;
-
-
-M = 500;
-[~,v] = K2X(V,0,3*M,e1,e2);
-[~,dxv] = K2X(DxV,0,3*M,e1,e2);
-[~,dyv] = K2X(DyV,0,3*M,e1,e2);
-[~,dxxv] = K2X(DxxV,0,3*M,e1,e2);
-[~,dxyv] = K2X(DxyV,0,3*M,e1,e2);
-[~,dyyv] = K2X(DyyV,0,3*M,e1,e2);
-[~,pot] = K2X(Pot,0,3*M,e1,e2);
-
-
-v = diag(v); dxv = diag(dxv).* (2 / alpha); dyv = diag(dyv).* (2 / alpha);
-dxxv = diag(dxxv).* (2 / alpha)^2; dyyv = diag(dyyv).* (2 / alpha)^2; 
-dxyv = diag(dxyv).* (2 / alpha)^2; pot = diag(pot);
-
-%1 v      real
-%2 Dxv    real   (Dx = -i dx)
-%3 Dyv    imag
-%4 DxDxv   real
-%5 DyDyv   real
-%6 DxDyv   imag
-A = [real(v), real(dxv), imag(dyv), real(dxxv), real(dyyv), imag(dxyv), pot].';
-names = ["u", "dxu", "dyu", "dxxu", "dyyu", "dxyu", "potential V"];
-
-mm = 20;
-A = A(:,M+1+mm:2*M-mm);
-
-% B = normalize(A,2, "norm");
-% ind = [1 2 4];
-% [c,s,~] = svd(B(ind,:), "econ");
+% prologue ---
+% vid=VideoWriter('.\results\ODE_asymptotics_3.mp4','MPEG-4'); open(vid)
+% fig=figure;
+% set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
 % 
-% disp(names(ind))
-% disp("singular values")
-% disp(s)
-% disp("coefficients")
-% disp(c)
+% for len=0.8:0.01:1.9
 % 
-% 
-% figure
-% hold on
-% plot((mm:M-1-mm)'./M, abs(B(ind,:)))
-% yline(0)
-% xlim([0 1])
-% legend(names(ind))
+% clf(fig)
+% tl=tiledlayout(1,2,'TileSpacing', 'compact');
+% title(tl, ['interval [-0.2, ' sprintf('%.2f', -0.2 + len) ']'])
 
 figure
-hold on
-title("$V$ vs second derivatives of $u$  on vertical edge of hexagon", 'Interpreter', 'Latex')
-plot((mm:M-1-mm)'./M, A(4,:) ./ A(1,:))
-plot((mm:M-1-mm)'./M, A(5,:) ./ A(1,:))
-plot((mm:M-1-mm)'./M, A(6,:) ./ A(1,:))
-plot((mm:M-1-mm)'./M, real(A(7,:)))
-ylim([-100, 100])
-legend(["$(4h^2 \partial_x^2 u) / u$", "$(4h^2 \partial_y^2 u) / u$", "$\Im (4h^2 \partial_x\partial_y u) / u$", "V"], 'Interpreter', 'Latex')
+tiledlayout(1,2,'TileSpacing', 'compact')
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1])
+% ---
+
+MM = 3000;
+V = @(x) exp(2i*pi*x);
+SV = @(x) exp(1i*pi*x);
+
+len = 0.9999;
+x = -0.2+len*(0:MM)/MM;
 
 
-% disp( (imag(dyv)' * dxv) / (norm(dxv) * norm(dyv)) )
-% disp( -norm(dxv) / norm(dyv) )
+U = @(x, alpha) [ 1,  1; exp(1i*pi*x), -exp(1i*pi*x)]...
+            + alpha^(-1) * 0.25i * pi * [exp(-1i*pi*x), -exp(-1i*pi*x); -1, -1];
 
+l0 = sum(SV(x(1:end-1))) * len/(MM);
+l1 = -0.5i*pi * len;
 
-
-%% (continued) calculate c (coefficient in ode) for some values of alpha
-
-alphas=5:0.1:20;
-xx_yy = alphas * 0;
-xx_xy = alphas * 0;
-x_y = alphas * 0;
-
-for id=1:length(alphas)
-alpha = alphas(id);
+disp("l0:"); disp(l0); disp("l1:"); disp(l1);
 
 
 
-[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2 * Up * Um, 1, 'smallest');
-[~,v] = K2X(V,0,300,e1,e2);
-phase = exp(1i*angle(v(1,1)));
-V = V ./ phase;
+alphas = 1:0.1:55;
+alphas2 = 1:0.1:55;
 
-Pot = Up*Um*const_fun(N);
-DxV = Dx(N,0,f1,f2) * V;
-DyV = Dy(N,0,f1,f2) * V;
+M_exact = zeros(length(alphas), 2);
 
-DxxV = Dx(N,0,f1,f2) * DxV;
-DxyV = Dy(N,0,f1,f2) * DxV;
-DyyV = Dy(N,0,f1,f2) * DyV;
-
-
-M = 500;
-[~,v] = K2X(V,0,3*M,e1,e2);
-[~,dxv] = K2X(DxV,0,3*M,e1,e2);
-[~,dyv] = K2X(DyV,0,3*M,e1,e2);
-[~,dxxv] = K2X(DxxV,0,3*M,e1,e2);
-[~,dxyv] = K2X(DxyV,0,3*M,e1,e2);
-[~,dyyv] = K2X(DyyV,0,3*M,e1,e2);
-[~,pot] = K2X(Pot,0,3*M,e1,e2);
-
-
-v = diag(v); dxv = diag(dxv).* (2 / alpha); dyv = diag(dyv).* (2 / alpha);
-dxxv = diag(dxxv).* (2 / alpha)^2; dyyv = diag(dyyv).* (2 / alpha)^2; 
-dxyv = diag(dxyv).* (2 / alpha)^2; pot = diag(pot);
-
-
-A = [real(v), real(dxv), imag(dyv), real(dxxv), real(dyyv), imag(dxyv), pot].';
-names = ["u", "dxu", "dyu", "dxxu", "dyyu", "dxyu", "potential V"];
-
-mm = 20;
-A = A(:,M+1+mm:2*M-mm);
-
-
-
-ind = [2 3];
-[c,~,~] = svd(A(ind,:), "econ");
-x_y(id) = c(3)/c(4);
-
-ind = [4 5];
-[c,~,~] = svd(A(ind,:), "econ");
-xx_yy(id) = c(3)/c(4);
-
-ind = [4 6];
-[c,~,~] = svd(A(ind,:), "econ");
-xx_xy(id) = c(3)/c(4);
-
+for ii=1:length(alphas)
+    alpha = alphas(ii);
+    M = eye(2);
+    for y=x(2:end)
+        M = ( eye(2) + alpha*[0 1; V(y) 0]*(len/MM) ) * M;
+    end
+    M_exact(ii,:) = eigs(M);
 end
 
-figure
+% WKB --------
+
+M_WKB = zeros(length(alphas2), 2);
+
+for ii=1:length(alphas2)
+    alpha = alphas2(ii);
+    M = U(x(end),alpha) * [exp(alpha*l0 + l1), 0; 0, exp(-alpha*l0 + l1)] * U(x(1), alpha)^(-1);
+    M_WKB(ii,:) = eigs(M);
+end
+
+
+nexttile
 hold on
-plot(alphas, xx_yy)
-plot(alphas, xx_xy)
-plot(alphas, x_y)
-legend(["$\sqrt{\partial_{yy} u / \partial_{xx} u}$",...
-        "$(Im \partial_{xy} u) / \partial_{xx} u$", "$\partial_y u / Im(\partial_x u)$"],...
-       'Interpreter', 'Latex')
+title('WKB')
+plot(abs(alphas2), real(log(M_WKB)),'LineWidth', 1)
+plot(abs(alphas2), imag(log(M_WKB)),'LineWidth', 1)
+ylim([-15 15])
+% plot(abs(alphas), real(log(M_exact)),'LineWidth', 1)
+% plot(abs(alphas), imag(log(M_exact)),'LineWidth', 1)
+% plot(abs(alphas), abs(log(M_exact ./ M_WKB)), 'LineWidth', 1)
+legend
 
 
-% Logarithmic derivative of protected state u
-
-% V(x)
-
-alpha = 10;
-[~,~,V] = svds(D + alpha*U + K*speye(size(D)), 1, 'smallest');
-V = V(1:length(V)/2); V = V / norm(V);
-[z,v] = K2X(V,K,300,e1,e2);
-
-
-rad = 20;
-chi = ones(rad,rad); chi(300,300) = 0; %chi=circshift(chi, [-rad/2, -rad/2]);
-v_conv =  ifft2(fft2(abs(v)) .* fft2(chi)) ./ rad^2;
-v_conv = v_conv .* exp(1i*angle(v));
-
-V_conv =X2K(v_conv,0,N,e1,e2);
-[~,Dbar_v_conv]=K2X(Dbar(N,0,f1,f2) * V_conv, 0, 300, e1,e2);
-
-vv = (Dbar_v_conv ./ v_conv) .^ 2;
-
-figure
-til=tiledlayout(1,4,'TileSpacing','compact');
-
-
-% nexttile;
-% hold on
-% title('$\chi$ where $\int \chi = 1$', 'Interpreter', 'latex');
-% contourf(real(z), imag(z), -chi ./ 2, levels);
-% axis equal; clim([minlevel 0.25]); 
-
-
-nexttile;
+nexttile
 hold on
-contourf(real(z), imag(z), max(min(real(vv), 40000), -40000), 32);
-axis equal
-colorbar
-
-nexttile;
-hold on
-contourf(real(z), imag(z), max(log(abs(v)), -20), 32);
-axis equal; colorbar;
-
-%% Which branch
-
-% We have energy surface
-
-M = 300;
-
-V = Up*Um*const_fun(N);
-[z,v] = K2X3(V,0,M,e1,e2, 'nophase');
-
-v = sqrt(v);
-% v= 1i*v;
-
-% Which piece of it is it?
-
-alpha = 20;
-[~,~,U] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
-[~,u] = K2X3(U,0,M,e1,e2, 'nophase');
-[~,du] = K2X3(2*Dbar(N,0,f1,f2)*U,0,M,e1,e2, 'nophase');
+title('exact')
+% plot(abs(alphas), real(log(M_WKB)),'LineWidth', 1)
+% plot(abs(alphas), imag(log(M_WKB)),'LineWidth', 1)
+plot(abs(alphas), real(log(M_exact)),'LineWidth', 1)
+plot(abs(alphas), imag(log(M_exact)),'LineWidth', 1)
+ylim([-15 15])
+% plot(abs(alphas), abs(log(M_exact ./ M_WKB)), 'LineWidth', 1)
+legend
+% plot(alphas, 1./alphas);
 
 
+% epilogue ---
 
-figure
-hold on
-surf(real(z), imag(z), angle(v), 'EdgeColor', 'none');
-clim([-pi,pi]); colormap(gca,wheelmap);
-view(2); axis equal;
-xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
-colorbar
-
-figure
-hold on
-surf(real(z), imag(z), angle(du ./ u), 'EdgeColor', 'none');
-clim([-pi,pi]); colormap(gca,wheelmap);
-view(2); axis equal;
-xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
-colorbar
-
-
-figure
-hold on
-contourf(real(z), imag(z), abs(v), 32);
-axis equal;
-xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
-colorbar
-
-figure
-hold on
-contourf(real(z), imag(z), min(abs(du ./ u), 10*alpha), 32);
-axis equal;
-xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off;
-colorbar
-
-
-%% "Whats psi"
-
-alpha = 20;
-[~,~,U] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
-[~,u] = K2X3(U,0,M,e1,e2, 'nophase');
-[~,du] = K2X3(2*Dbar(N,0,f1,f2)*U,0,M,e1,e2, 'nophase');
-
-% bigness
-
-rad = 8;
-chi = ones(rad,rad); chi(2*M,2*M) = 0; %chi=circshift(chi, [-rad/2, -rad/2]);
-u_conv =  ifft2(fft2(abs(u)) .* fft2(chi)) ./ rad^2;
-u_conv = log(abs(u_conv)) ./ alpha;
-
-figure
-hold on
-contourf(real(z), imag(z), u_conv, 32)
-hex(zS); axis equal; colorbar
-xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off
-
-
-% phase
-figure
-hold on
-contourf(real(z), imag(z), angle(u), 32)
-hex(zS); axis equal; colorbar
-xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off
-
-%%
-%%
-%%
-%% ATTEMPT TO GET A PHASE FUNCTION
-%% Finite element for a hexagon dirichlet problem, Laplacian phi = {q,bar q}/|xi|^2
-model = createpde;
-
-rho = exp(1i*pi/3);
-hex_z = zS * rho.^(0:5);
-g = decsg([2 6 real(hex_z) imag(hex_z)]');
-geometryFromEdges(model,g);
-
-applyBoundaryCondition(model,"dirichlet", ...
-                       "Edge",1:model.Geometry.NumEdges, ...
-                       "u",0);
-
-% f= {q, bar q} / |xi|^2
-V = const_fun(N);
-V = Up*Um*V;
-
-dzV = 1i* Dbar(N,0,f1,f2)' * V;
-
-M=1000;
-[~,v] = K2X(V,0,M,e1,e2);
-[~,dzv] = K2X(dzV,0,M,e1,e2);
-bracket = imag( sqrt(conj(v)) .* dzv );
-f = abs(bracket) ./ abs(v);
-f(1,1) = f(2,1); % lol
-
-% % sanity checks
-% figure
-% hold on
-% surf(real(z),imag(z),abs(bracket) ./ 1500, 'EdgeColor', 'none')
-% view(2); axis equal; colorbar;
-% figure 
-% hold on
-% contourf(real(z),imag(z),f, 18)
-% view(2); axis equal; colorbar;
-
-
-ffun = @(z,etc) interpolate(e1,e2,f,M,z.x,z.y);
-specifyCoefficients(model, "m",0,"d",0,"c",1,"a",0,"f",ffun);
-
-generateMesh(model,"Hmax",0.01);
-result=solvepde(model);
-
-figure
-hold on
-pdeplot(result.Mesh, XYData=result.NodalSolution, Contour="on", ColorMap="default", Levels=18); 
-axis equal
-title("$\Phi$", 'Interpreter', 'latex')
-% saveas(gcf,'./Phi_solution.png')
-
-%% Log eigenfunction / alpha   smoothened, then take laplacian
-
-alpha = 20;
-[~,~,V] = svds(D + alpha*U + K*speye(size(D)), 1, 'smallest');
-V = V(1:length(V)/2); V = V / norm(V);
-[z,v] = K2X(V,K,300,e1,e2);
-
-
-rad = 8;
-chi = ones(rad,rad); chi(300,300) = 0; %chi=circshift(chi, [-rad/2, -rad/2]);
-v_conv =  ifft2(fft2(abs(v)) .* fft2(chi)) ./ rad^2;
-v_conv = log(abs(v_conv)) ./ alpha;
-% v_conv = max(log(abs(v)) ./ alpha, -0.5);
-
-V_conv =X2K(v_conv,0,N,e1,e2);
-[~,Lap_v_conv]=K2X(Dbar(N,0,f1,f2) * Dbar(N,0,f1,f2)' * V_conv, 0, 300, e1,e2);
-
-
-
-figure
-tiledlayout(1,4,'TileSpacing','compact');
-
-minlevel=-1;
-levels=linspace(minlevel,0.25,40);
-
-nexttile;
-hold on
-title('$\chi$ where $\int \chi = 1$', 'Interpreter', 'latex');
-contourf(real(z), imag(z), -chi ./ 2, levels);
-axis equal; clim([minlevel 0.25]); 
-
-
-nexttile;
-hold on
-title('$\alpha^{-1} \log |u_K|$', 'Interpreter', 'latex');
-contourf(real(z), imag(z), max(log(abs(v)) ./ alpha, minlevel), levels);
-clim([minlevel 0.25]); axis equal;
-
-nexttile;
-hold on
-title('$\alpha^{-1} \log (|u_K| \ast \chi)$', 'Interpreter', 'latex');
-contourf(real(z), imag(z), max(v_conv, minlevel), levels);
-axis equal; clim([minlevel 0.25]); colorbar;
-
-% nexttile;
-% hold on
-% title('$\Delta(\alpha^{-1} \log (|u_K| \ast \chi))$', 'Interpreter', 'latex');
-% surf(real(z), imag(z), real(Lap_v_conv),'EdgeColor', 'None');
-% axis equal; 
-% view(2);
-% % hex(zS); axis equal; colorbar;
-% ylim([-1.721,0]), xlim([-0.5,0.5]); 
-%  colorbar;
-
-nexttile;
-hold on
-title('max$(-3,\Delta(\alpha^{-1} \log (|u_K| \ast \chi)) )$', 'Interpreter', 'latex');
-contourf(real(z), imag(z), min(max(real(Lap_v_conv),-3), 18),15);
-axis equal; 
-view(2);
-% hex(zS); axis equal; colorbar;
-ylim([-1.721,0]), xlim([-0.5,0.5]); 
- colorbar;
-
-% saveas(gcf,'./results/Laplacian_of_phi_1.png')
-%% Phase function branch cut WKB (from AM's Phys Rev Letter paper on WKB)
-
-M = 300;
-
-% Get scalar potential as a position space vector:
-V = Up*Um*const_fun(N);
-[z,v] = K2X(V,0,M,e1,e2);
-
-
-% Take square root
-% Matlab sqrt returns number with  -pi <= arg <= pi
-v = sqrt(-v);
-v = 1i*v;
-
-figure
-hold on
-contourf(real(z), imag(z), real(v), 32)
-hex(zS)
-axis equal
-colorbar
-
-figure
-hold on
-contourf(real(z), imag(z), imag(v), 32)
-hex(zS)
-axis equal
-colorbar
-
-
-% Take fourier transform
-A = X2K(v,0,N,e1,e2); 
-
-% Invert Dbar
-Db = Dbar(N,0,f1,f2);
-ww = sparse(2*N+1, 2*N+1); ww(N+1,N+1) = 1;
-DD = 2i*Db + kron(ww, ww);
-
+% drawnow
+% frame=getframe(fig);
+% writeVideo(vid,frame)
+% end
 % 
-A = Inv(DD) * A;
-a0 = A(N*(2*N+1) + N+1) * sqrt(sqrt(3)/2);
-A(N*(2*N+1) + N+1) = 0;
+% close(vid)
+%
 
 
-% transform back to position basis
-[z,psi] = K2X(A,0,M,e1,e2);
-psi = psi + 0.5*(a0'*z+a0*conj(z));
+% ---
 
-figure
+%% - Check locally
+
+
+%% - From T_k
+
+
+%% - Try other potentials
+
+
+%% -
+
+epsilon = 0.01;
+
+A = [exp(20), 0; 0, exp(-20)];
+ep = epsilon*rand(2);
+
+E1 = eigs(A);
+E2 = eigs((eye(2) + ep) * A);
+
+disp("---")
+disp(log(E1 ./ E2))
+% disp(E2)
+
+
+%% FOR GLOBAL NONZERO POTENTIAL FUNCTION
+%% - graph magic angles
+% Pot = (fourier_shift(N,-3,-3)+fourier_shift(N,1,1) + fourier_shift(N,0,4)+5*fourier_shift(N,0,0));
+% Pot = (-0.01*fourier_shift(N,-1,0)+fourier_shift(N,1,0));
+Pot = (fourier_shift(N,-3,-3)+fourier_shift(N,1,1) + 2.1*fourier_shift(N,0,0));
+% W = (fourier_shift(N,-1,0)+fourier_shift(N,0,-1)+fourier_shift(N,1,1) + 3.1*fourier_shift(N,0,0));
+% Pot = W^2;
+
+k=5;
+V = Pot*const_fun(N);
+[~,v] = F2X(V,0,300,e1,e2);
+v= sqrt(v);
+A0 = sum(v(:)) / 300^2;
+Ak = Inv(4*Dbar(N,k,f1,f2)^2) * Pot;
+
+Alphas = 1./sqrt(eigs(Ak, 300));
+Alphas = [Alphas; -Alphas];
+
+[xx,yy] = meshgrid(-10:10,-10:10);
+AA = -xx*f1 + yy*f2; AA = AA(:); AA = (AA + k)/A0;
+AA = [AA; -AA];
+
+p = k/A0;
+disp(Alphas(abs(Alphas - p) < 0.1) - AA(abs(AA - p) < 0.1));
+
+
+figure 
 hold on
-contourf(real(z), imag(z), real(psi), 32)
-hex(zS)
-axis equal
-colorbar
+% title('$V(z) = 2.1 + e^{2\pi i(a_1+a_2)} + e^{2\pi i (-2a_1 -3a_2)}$ for $z=a_1 \omega^2 - a_2 \omega$', 'Interpreter', 'latex')
+% title('$V(z) = -e^{2\pi i(-a_1)} + 1.1e^{2\pi i a_1}$ for $z=a_1 \omega^2 - a_2 \omega$', 'Interpreter', 'latex')
 
-figure
-hold on
-contourf(real(z), imag(z), imag(psi), 32)
-hex(zS)
-axis equal
-colorbar
+scatter(real(Alphas), imag(Alphas), 5, 'filled', 'Color', 'blue')
+plot(real(AA), imag(AA), 'o', 'Color', 'black')
+% legend(["$-\frac{1}{\alpha^2} \in Spec_{L^2(\bf{C}/\Lambda; \bf{C})}(2D_{\bar z} + K)^{-2}V$", "$\frac{1}{A_0}(\pm K + \Lambda^*)$"], 'Interpreter', 'latex')
+% legend(["$-\frac{1}{\alpha^2} \in Spec_{L^2(\bf{C}/\Lambda; \bf{C})}(2D_{\bar z} + K)^{-2}V$"], 'Interpreter', 'latex')
 
-% Get 2 wkb solutions
-[~,vv] = K2X(Up*Um*const_fun(N),0,M,e1,e2); % potential v
-vv = vv .^ (-0.25);
-% vv(imag(z) > 0) = -1i*vv(imag(z)>0);
-
-
-alpha = 15;
-v1 = exp(1i*psi*alpha) .* vv;
-v2 = exp(-1i*psi*alpha) .* vv;
-
-%% (continued) wronskian with actual solution near edges
-
-% V1 = X2K(v1, 0, N, e1, e2);
-% V2 = X2K(v2, 0, N, e1, e2);
-
-
-% protected state
-[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
-[~,v_temp] = K2X(V,0,300,e1,e2);
-V = V / exp(1i*angle(v_temp(1,1)));
-
-
-
-% set of z to calculate for
-step = 0.003;
-[xx, yy] = meshgrid(-0.05:step:0.05, sqrt(3)/3-0.03:step:2*sqrt(3)/3+0.03);
-z = xx + 1i*yy;
-
-
-% psi = compute_psi(z);
-
-% figure
-% hold on
-% contourf(real(z), imag(z), real(psi), 100);
-% hex(zS)
-% axis equal
-
-aa = K2Vect(A,z,f1,f2,32);
-vv = K2Vect(Up*Um*const_fun(N),z,f1,f2,32);
-vv = vv .^ -0.25;
-
-u = K2Vect(V,z,f1,f2,32);
-du = K2Vect(Dbar(N,0,f1,f2) * V,z,f1,f2,32);
-u1 = exp(1i*aa*alpha) .* vv;
-u2 = exp(-1i*aa*alpha) .* vv;
-du1 = 0.5*(u1 - circshift(u1, [0 1]) + 1i* (u1 - circshift(u1, [1 0])) ) ./step;
-du2 = 0.5*(u2 - circshift(u2, [0 1]) + 1i* (u2 - circshift(u2, [1 0])) ) ./step;
-
-z = z(2:end, 2:end);
-u = u(2:end, 2:end);
-u1 = u1(2:end, 2:end);
-u2 = u2(2:end, 2:end);
-du = du(2:end, 2:end);
-du1 = du1(2:end, 2:end);
-du2 = du2(2:end, 2:end);
-vv = vv(2:end, 2:end);
-
-
-% u1 = K2Vect(V1,z,f1,f2,32);
-% du1 = K2Vect(Dbar(N,0,f1,f2) * V1,z,f1,f2,32);
-% u2 = K2Vect(V2,z,f1,f2,32);
-% du2 = K2Vect(Dbar(N,0,f1,f2) * V2,z,f1,f2,32);
-
-
-% wronskians
-w1 = du1.*u - u1.*du ;
-w2 = du2.*u - u2.*du ;
-w3 = du2.*u1 - du1.*u2;
-
-w1 = w1 ./ w3; w2 = w2 ./ w3;
-
-
-figure
-hold on
-contourf(real(z), imag(z), min(max(imag(w1), -num), num), 100)
-xline(0)
-plot(0,2*sqrt(3)/3,'o')
-plot(0,sqrt(3)/3,'o')
-colorbar
 axis equal
 
-%% (continued) compare actual solution and wkb on edge
+%% - graph eigenfunction for increasing alpha 
 
-alpha =15;
-xx = (sqrt(3)/3:0.002:2*sqrt(3)/3) * 1i;
-aa = K2Vect(A,xx,f1,f2,32);
-aa = aa + 0.5*(a0'*xx+a0*conj(xx));
-vv = K2Vect(Up*Um*const_fun(N),xx,f1,f2,32);
+W = (fourier_shift(N,-1,0)+fourier_shift(N,0,-1)+fourier_shift(N,1,1) + 3.1*fourier_shift(N,0,0));
+% W = (fourier_shift(N,-3,-3)+fourier_shift(N,1,1) + 2.1*fourier_shift(N,0,0));
+% W = fourier_shift(N,0,0);
 
-u2 = cos(alpha * aa) .* (vv .^ -0.25);
-u2 = min(u2, 1);
-u2 = u2 / max(u2);
-
-uu = K2Vect(V, xx, f1, f2, 32);
-uu = uu / max(uu);
-
-
-% plot
-figure
-hold on
-plot(imag(xx), u2);
-plot(imag(xx), uu);
-
-
-xline(sqrt(3)/3)
-xline(2*sqrt(3)/3)
-yline(0)
-
-
-%% (continued) comparison of exponential growth rate near edge
-
-
-alpha = 15;
-
-
-% actual solution
-[~,~,V] = svds(4*Dbar(N,0,f1,f2)^2 - alpha^2*Up*Um, 1, 'smallest');
-fig=figure;
-vid=VideoWriter('.\results\physics_growth_comparison_2.mp4','MPEG-4'); open(vid)
-% set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
-
-for s=-0.5*sqrt(3)*1/2:0.005:0.5*sqrt(3)*1/2
-x = (-0.5:0.01:0.5) + sqrt(3)*1i/2 + 1i*s;
+[~,w] = F2X(W*const_fun(N),0,300,e1,e2);
+A0 = sum(w(:)) / 300^2;
 
 %
-v = K2Vect(V,x,f1,f2,N);
-psi = K2Vect(A,x,f1,f2,N);
-psi = imag(psi);
+% vid=VideoWriter('.\results\global_squareroot_eigenfunction_3.mp4','MPEG-4'); open(vid)
+% fig=figure;
+% set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+fig=figure;
+alpha = 30;
+
+% alphas = 10:0.1:20;
+% for alpha=alphas
+% %
+
+k = alpha * A0;
+disp(k)
+% %%
+% D = 2*[Dbar(N,0,f1,f2), 0*W; 0*W, Dbar(N,0,f1,f2)] - alpha*[0*W, speye(size(W)); W^2, 0*W];
+% k = eigs(D, 10, 'smallestabs');
+% disp(k)
+% % k = k(2);
+% 
+% %%
+[~,s,U] = svds(4*Dbar(N,k,f1,f2)^2 - alpha^2*W^2, 1, 'smallest');
+disp(s)
+[~,u] = F2X3(U,k,300,e1,e2);
+
+[~,s,U2] = svds(2*Dbar(N,k,f1,f2) - alpha*W, 1, 'smallest');
+disp(s)
+[z,u2] = F2X3(U2,k,300,e1,e2);
+
+% Db = Dbar(N,0,f1,f2);
+% ww = sparse(2*N+1, 2*N+1); ww(N+1,N+1) = 1;
+% DD = 2*Db + kron(ww, ww);
+% 
+% Phi = Inv(DD) * W * const_fun(N);
+% Phi(N*(2*N+1) + N+1) = 0;
+% [~,phi] = F2X3(Phi, 0, 300, e1, e2, 'nophase');
+% phi = alpha*phi + 1i*(z .* k' + conj(z) .* k)/2;
 
 clf(fig)
-hold on
-title("$\psi$ and $\log|u|$ for $\alpha = 15$", 'Interpreter', 'latex')
-plot(x, log(abs(v)) / alpha)
-plot(x, psi);
-plot(x, -psi);
+tl=tiledlayout(1,2,'TileSpacing', 'compact');
 
+title(tl, [['$\alpha =' sprintf('%.1f', alpha) '$']...
+    "$k = \alpha (\int W) / (\int 1)$,   $W(a_1\omega^2 - a_2\omega) = 3.1 + e^{2\pi ia_1} + e^{2\pi i a_2} + e^{2\pi i(-a_1-a_2)}$" ...
+    ], 'Interpreter', 'latex')
+
+
+nexttile
+hold on
+title('$|\alpha|^{-1}\log|u|$, $u$ is lowest eigenfunction of $P^*P$, where $P(\alpha) = (2D_{\bar z}+k)^2 - \alpha^2 W^2$', 'Interpreter', 'latex');
+minlevel=-0.8;
+levels=linspace(minlevel,0.1,40);
+contourf(real(z), imag(z), max(log(abs(u)) / alpha, minlevel), levels)
+clim([-0.8, 0.1])
+axis equal; colorbar
+hex(zS)
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off
+
+nexttile
+hold on
+title('$\log|u_1|$, $u_1 \in ker_{L^2(\bf{C}/ \Lambda; \bf{C})}2D_{\bar z}+k - \alpha W$', 'Interpreter', 'latex');
+
+contourf(real(z), imag(z), log(abs(u2)), 32)
+axis equal; colorbar
+hex(zS)
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off
+
+
+% %
+% drawnow
+% frame=getframe(fig);
+% writeVideo(vid,frame)
+% end
+% 
+% close(vid)
+% %
+
+%% - graph eigenfunction/poisson bracket for changing potential
+
+vid=VideoWriter('.\results\global_squareroot_potential_3.mp4','MPEG-4'); open(vid)
+fig=figure;
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+for ii=0:0.1:5
+
+    disp("-----")
+
+W = (fourier_shift(N,-1,0)+fourier_shift(N,0,-1)+ii*fourier_shift(N,1,1) + (2.1+ii)*fourier_shift(N,0,0));
+
+[~,w] = F2X(W*const_fun(N),0,300,e1,e2);
+A0 = sum(w(:)) / 300^2;
+
+
+alpha = 13;
+
+
+k2 = alpha * A0;
+k = 0;
+disp(k)
+
+[~,s,U] = svds(4*Dbar(N,k,f1,f2)^2 - alpha^2*W^2, 1, 'smallest');
+disp(s)
+[~,u] = F2X3(U,k,300,e1,e2);
+
+[~,s,U2] = svds(2*Dbar(N,k2,f1,f2) - alpha*W, 1, 'smallest');
+disp(s)
+[z,u2] = F2X3(U2,k2,300,e1,e2);
+
+
+clf(fig)
+tl=tiledlayout(1,3,'TileSpacing', 'compact');
+
+title(tl, [[' $W(a_1\omega^2 - a_2\omega) = ' sprintf('%.1f', ii+2.1)  ' + e^{2\pi ia_1} + e^{2\pi i a_2} + ' sprintf('%.1f', ii)  'e^{2\pi i(-a_1-a_2)}$']...
+    "$\alpha = 13, k = 0$"...%\alpha (\int W) / (\int 1)$" ...
+    ], 'Interpreter', 'latex')
+
+
+nexttile
+hold on
+title('$|\alpha|^{-1}\log|u|$,  $u$ lowest eigenfunction of $P^*P$', 'Interpreter', 'latex');
+minlevel=-0.7 - ii*0.17;
+levels=linspace(minlevel,0.2,40);
+contourf(real(z), imag(z), max(log(abs(u)) / alpha, minlevel), levels)
+clim([-0.7 - ii*0.17, 0.1])
+axis equal; colorbar
+hex(zS)
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off
+
+nexttile
+hold on
+title('$\log|u_1|$, $u_1 \in ker_{L^2(\bf{C}/ \Lambda; \bf{C})}2D_{\bar z}+k_2 - \alpha W$', 'Interpreter', 'latex');
+
+contourf(real(z), imag(z), log(abs(u2)), 32)
+axis equal; colorbar
+hex(zS)
+xlim([-0.63,0.63]), ylim([-0.63,0.63]); hold off
+
+
+
+[z,w] = F2X3(W*const_fun(N),0,500,e1,e2);
+[~,dzw] = F2X3(1i* Dbar(N,0,f1,f2)' * W*const_fun(N),0,500,e1,e2);
+
+bracket = (abs(w).^2) .* imag( dzw );
+
+nexttile
+hold on
+
+title("$|\{q, \bar q\}|_{q^{-1}(0)}$, for $q = 4\bar\zeta^2 - W^2$", 'Interpreter', 'latex')
+surf(real(z), imag(z), abs(bracket), 'Edgecolor', 'None')
+colorbar
+axis equal
+view(2)
+surf(real(z), imag(z), 0*bracket,'Edgecolor', 'none', 'facecolor', 'red')
+hex(zS, 10000)
+xlim([-0.63,0.63]), ylim([-0.63,0.63]);
+
+
+%
 drawnow
 frame=getframe(fig);
-writeVideo(vid, frame)
-
+writeVideo(vid,frame)
 end
 
 close(vid)
-
-
-%%
-%%
-%% OTHER (possibly related) -------------------
-%%
+%% OTHER -------------------------------------------
 %% Sample use of code for finding bracket area
 
 figure
@@ -1499,9 +1996,9 @@ for id=1:length(theta)
     tl=tiledlayout(1,3,'TileSpacing','compact');
     V = (cos(thet)^2 * Up - sin(thet)^2 * Up2)* (cos(thet)^2 * Um - sin(thet)^2 * Um2);
     [~,~,U] = svds((4*Dbar(N,0,f1,f2)^2 -alpha(id)^2 * V), 1, 'smallest');
-    [z,u0] = K2X3(U,0,300,e1,e2);
+    [z,u0] = F2X3(U,0,300,e1,e2);
 
-    [~,v] = K2X3( V * const_fun(N), 0, 300, e1,e2 );
+    [~,v] = F2X3( V * const_fun(N), 0, 300, e1,e2 );
     v = v ./ exp(1i*angle(v(150,150)));
 
     title(tl, ['$V(z) = U(z)U(-z), U(z) = \cos^2(\theta)f_1 - \sin^2(\theta) f_{-2}, \theta = '...
@@ -1589,10 +2086,9 @@ plot(real(Alphas), imag(Alphas), 'x', 'Color', 'black')
 
 
 %% IVP on cylinder
-%%
-%%
+
 %% EIGENVALUES/EIGENFUNCTIONS OF H
-%% Eigenvalues of H: single alpha
+%% - Eigenvalues of H: single alpha
 
 H = [0*D, (D+5*U)'; (D+5*U), 0*D];
 E = svds(D+5*U, 200, 'smallest');
@@ -1606,7 +2102,7 @@ figure hold on
 plot(E, (sqrt(3)/(4*pi) * E.^2  - (1:200)' ) ./ E);
 yline(0);
 
-%% Eigenvalues of H for range of alpha
+%% - Eigenvalues of H for range of alpha
 
 alphas = 0:0.1:15;
 
@@ -1620,7 +2116,7 @@ figure hold on
 plot(alphas,EE,'Color','b');
 xlabel("\alpha")
 ylabel("Positive eigenvalues of $H_0(\alpha)$",'Interpreter','latex')
-%% Graph log bands / alpha    as alpha grows
+%% - Graph log bands / alpha    as alpha grows
 
 % Dbar
 Db_1 = Dbar(N, -K, f1, f2);
@@ -1660,7 +2156,7 @@ ylim([-1, 0]); xlim([3, 20]);
 
 saveas(fig,'./results/scaled_log_eigenvalues_k0_2.png')
 
-%% Graph the first 10 eigenfunctions of H
+%% - Graph the first 10 eigenfunctions of H
 
 p=10;
 [~,s,V] = svds(D + 17*U + K*speye(size(D)), p, 'smallest');
@@ -1689,7 +2185,7 @@ else
 end
 V2 = V2 ./ norm(V2);
 
-[z,v1,v2] = K2X4(V2,K,200,e1,e2);
+[z,v1,v2] = F2X4(V2,K,200,e1,e2);
 
 
 nexttile; hold on
@@ -1702,12 +2198,134 @@ end
 
 
 
+%% Bands of scalar model
+
+% alphas = 1.469:0.00001:1.47;
+alpha = alphas(abs(alphas - 3.00574) < 0.01);
+alphas = alpha + (-0.1:0.005:0.1);
+% alpha = 2.9;
+k_range = [-3*K/2:0.1:-0.5, -0.5:0.021:0.5  ,0.5:0.1:3*K/2];
+bands = zeros(2, length(k_range));
+
+vid=VideoWriter('.\results\bands_scalar_2.mp4','MPEG-4'); open(vid);
+fig=figure;
+set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+
+for alpha=alphas
+
+    for id=1:length(k_range)
+
+        P = 4*Dbar(N,k_range(id),f1,f2)^2 - alpha^2 * Up * Um;
+        s = svds(P, 2, 'smallest');
+        bands(:,id) = s;
+
+    end
+
+    clf(fig);
+    hold on
+    title(['$\alpha = $' sprintf('%.4f', alpha)], 'Interpreter', 'latex')
+    plot(k_range, bands, 'LineWidth', 2);
+    plot(k_range, -bands, 'LineWidth',2);
+    xline(0)
+    xline(K)
+    xline(-K)
+    xlim([-3*K/2 3*K/2])
+    ym = max(bands(:));
+    ylim([-ym*1.1,ym*1.1]);
+
+    drawnow
+    frame=getframe(fig);
+    writeVideo(vid,frame)
+end
+
+close(vid)
+
+
+%% Mengxuan case n=2
+
+D = @(alpha, k) [2*Dbar(N,k-K, f1,f2), alpha*Up;
+                 alpha*Um,  2*Dbar(N,k+K,f1,f2)];
+ss = size(Up);
+Z = sparse(ss(1), ss(2));
+Tp = [speye(ss), Z;
+    Z, Z];
+Tm = [Z, Z;
+    Z, speye(ss)];
+
+
+% alpha = alphas(abs(alphas - 4.60233 - 3.399i) < 0.01);
+% alphas = 0.3:0.01:1.7;
+alpha = alphas(abs(alphas - 1.45282) < 0.01);
+
+
+k_range = -3*K/2:0.2:3*K/2;
+k_range2=K + (-0.1:0.01:0.1);
+num=2;
+num2=2;
+bands = zeros(num, length(k_range));
+bands2 = zeros(num, length(k_range2));
+
+% vid=VideoWriter('.\results\bands_multilayer_2.mp4','MPEG-4'); open(vid);
+fig=figure;
+set(fig, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+
+
+% for alpha=alphas
+
+    for id=1:length(k_range)
+
+        % P = 4*Dbar(N,k_range(id),f1,f2)^2 - alpha^2 * Up * Um;
+        D2 = [D(alpha, k_range(id)), Tp;
+            Tm,  D(0, k_range(id))];
+        s = svds(D2, num, 'smallest');
+        bands(:,id) = s;
+
+    end
+
+    for id=1:length(k_range2)
+
+        % P = 4*Dbar(N,k_range(id),f1,f2)^2 - alpha^2 * Up * Um;
+        D2 = [D(alpha, k_range2(id)), Tp;
+            Tm,  D(0, k_range2(id))];
+        s2 = svds(D2, num2, 'smallest');
+        bands2(:,id) = s2;
+
+    end
+
+    clf(fig);
+    hold on
+    tl=tiledlayout(1,2,'TileSpacing','compact');
+    title(tl,['$\alpha = $' sprintf('%.2f', alpha)], 'Interpreter', 'latex')
+
+    nexttile
+    hold on
+    plot(k_range, bands);
+    plot(k_range, -bands);
+    xline(0)
+    xline(K)
+    xline(-K)
+    ym = max(bands,[],'all');
+    ylim([-ym*1.1,ym*1.1]);
+
+    nexttile
+    hold on
+    plot(k_range2, bands2);
+    plot(k_range2, -bands2);
+    xline(K)
+    ym = max(bands2,[],'all');
+    ylim([-ym*1.1,ym*1.1]);
 
 
 
-%%
-%%
-%% FUNCTIONS
+    % drawnow
+    % frame=getframe(fig);
+    % writeVideo(vid,frame)
+% end
+
+% close(vid)
+
+%% FUNCTIONS ----------------------------------
 
 % Fourier representation: a vector is a length (2N+1)^2 column vector V, represent 
 % v(z) = \sum_{a,b\in{-N,...,N}} V((2N+1)*(b+N)+a+N+1) e^{i<z, a f1 + b f2+ k>} / sqrt(area_of_(e1,e2))
@@ -1715,8 +2333,7 @@ end
 % Position-space representation: v(z) for
 % z  a MxM matrix  with values   z(a,b) = e1*(a-1)/M + e2*(b-1)/M
 
-%%
-%%
+
 %% Dbar and multiply by potential in fourier basis
 
 % Derivatives --------------
@@ -1760,9 +2377,9 @@ function V=const_fun(N)
 end
 
 
-%% Fourier transforms
+%% Fourier transform
 
-function [z,v] = K2X(V,k,M,e1,e2)
+function [z,v] = F2X(V,k,M,e1,e2)
     N = round((sqrt(length(V))-1)/2);
     V0 = reshape(V,2*N+1, 2*N+1);
     V = zeros(M);
@@ -1778,7 +2395,7 @@ function [z,v] = K2X(V,k,M,e1,e2)
 end
 
 % Inverse
-function V=X2K(v,k,N,e1,e2)
+function V=X2F(v,k,N,e1,e2)
     M = size(v, 1);
     [y2,y1]=meshgrid(0:M-1, 0:M-1);
     z=(e1*y1+e2*y2)/M;
@@ -1793,7 +2410,7 @@ function V=X2K(v,k,N,e1,e2)
 end
 
 % For specific set of points
-function v = K2Vect(V,z,f1,f2,Nmax)
+function v = F2Vect(V,z,f1,f2,Nmax)
     N = round((sqrt(length(V))-1)/2);
     V = reshape(V,2*N+1, 2*N+1);
     v = 0 * z;
@@ -1808,23 +2425,23 @@ function v = K2Vect(V,z,f1,f2,Nmax)
     v = v / sqrt(sqrt(3)/2);
 end
 
-% Same as K2X but do for two layers (D(alpha) is 2x2 matrix), and correct
+% Same as F2X but do for two layers (D(alpha) is 2x2 matrix), and correct
 % for phase
-function [z,v1,v2] = K2X2(V,k,M,e1,e2)
+function [z,v1,v2] = F2X2(V,k,M,e1,e2)
     K = 4*pi/3;
 
-    [z,v1] = K2X(V(1:length(V)/2),k-K,M,e1,e2);
-    [~,v2] = K2X(V(1+length(V)/2:end),k+K,M,e1,e2);
+    [z,v1] = F2X(V(1:length(V)/2),k-K,M,e1,e2);
+    [~,v2] = F2X(V(1+length(V)/2:end),k+K,M,e1,e2);
 
     phase=exp(1i * angle(v1(1)) );
     v1=v1 ./ phase; v2=v2./phase;
 end
 
-% Same as K2X, K2X2 but repeat over some copies of fundamental domain,
+% Same as F2X, F2X2 but repeat over some copies of fundamental domain,
 % and choose a phase
 
-function [z,v] = K2X3(V,k,M,e1,e2, nophase)
-    [z0,v0]=K2X(V,k,M,e1,e2);
+function [z,v] = F2X3(V,k,M,e1,e2, nophase)
+    [z0,v0]=F2X(V,k,M,e1,e2);
 
     z = [z0-e1-e2, z0-e1; z0-e2, z0];
     
@@ -1836,11 +2453,11 @@ function [z,v] = K2X3(V,k,M,e1,e2, nophase)
     end
 end
 
-function [z,v1,v2] = K2X4(V,k,M,e1,e2)
+function [z,v1,v2] = F2X4(V,k,M,e1,e2)
     K = 4*pi/3;
 
-    [z,v1] = K2X3(V(1:length(V)/2),k-K,M,e1,e2);
-    [~,v2] = K2X3(V(1+length(V)/2:end),k+K,M,e1,e2);
+    [z,v1] = F2X3(V(1:length(V)/2),k-K,M,e1,e2);
+    [~,v2] = F2X3(V(1+length(V)/2:end),k+K,M,e1,e2);
     phase=exp(1i*angle(v1(length(v1)/2)));
     v1=v1 ./ phase; v2=v2./phase;
 end
@@ -1865,15 +2482,24 @@ function [V0,V1,V2] = PROJC(N,V,s)
     V0 = V0 * V; V1 = V1 * V; V2 = V2 * V;
 end
 
-% Inclusion of V, L^2_s(C;C^1) = V + RV + R^2V + C.
-function M = ROT_INC(N,s,f1,f2)
+% Inclusion of V, L^2_{sK}(C;C^1) = V + RV + R^2V + C.
+function Inc = ROT_INC(N,s,f1,f2)
     [yy,xx] = meshgrid(-N:N, -N:N);
     k = xx * f1 + yy * f2 + s*4*pi/3;
     k = k(:);
     vv = find( (abs(k) > 0.0001) & (angle(k) >= -pi/3-0.00001) & (angle(k) < pi/3 - 0.000001) );
     m = length(vv);
-    
-    M = sparse(vv, 1:m, ones(m,1), (2*N+1)^2, m);
+    Inc = sparse(vv, 1:m, ones(m,1), (2*N+1)^2, m);
+end
+
+function [Inc, Inc0] = ROT_INC2(N,s,f1,f2)
+    [yy,xx] = meshgrid(-N:N, -N:N);
+    k = xx * f1 + yy * f2 + s*4*pi/3;
+    k = k(:);
+    vv = find( (abs(k) > 0.0001) & (angle(k) >= -pi/3-0.00001) & (angle(k) < pi/3 - 0.000001) );
+    m = length(vv);
+    Inc = sparse(vv, 2:m+1, ones(m,1), (2*N+1)^2, m+1);
+    Inc0 = sparse(find(abs(k) < 0.0001), 1, 1, (2*N+1)^2, m+1);
 end
 
 
@@ -1958,6 +2584,7 @@ end
 
 %% Miscellaneous
 
+
 function result=theta0(z, tau)
     result = 0 * z;
     N = 200;
@@ -1997,11 +2624,14 @@ function scattermult(A,dotsize)
     
     [C,~,ic]=uniquetol(A, 0.001, 'ByRows', true);
     count=accumarray(ic,1); 
-    set1=C(count==1,:); set2=C(count==2,:); set3=C(count>2,:);
+    set1=C(count==1,:); set2=C(count==2,:); set3=C(count==3,:);
+    set4=C(count==4,:); set5=C(count>4,:);
     
     scatter(set1(:,1),set1(:,2),dotsize,'blue','filled');
     scatter(set2(:,1),set2(:,2),dotsize,'red','filled');
     scatter(set3(:,1),set3(:,2),dotsize,'black','filled');
+    scatter(set4(:,1),set4(:,2),dotsize,'green','filled');
+    scatter(set5(:,1),set5(:,2),dotsize,'magenta','filled');
 
 end
 
